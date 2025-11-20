@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>Pixel Studio – Rastergrafik Editor</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f172a;
+      color: #e5e7eb;
+      --accent: #38bdf8;
+      --accent-soft: rgba(56, 189, 248, 0.15);
+      --border: #1f2937;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+
+    .app {
+      max-width: 1100px;
+      width: 100%;
+      background: #020617;
+      border-radius: 0.75rem;
+      border: 1px solid var(--border);
+      box-shadow: 0 25px 60px rgba(15, 23, 42, 0.8);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    header {
+      padding: 0.9rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    header h1 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin: 0;
+    }
+
+    header h1 span.logo-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #22c55e, #38bdf8);
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.8);
+    }
+
+    header .subtitle {
+      font-size: 0.8rem;
+      color: #9ca3af;
+    }
+
+    .header-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      align-items: center;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+      gap: 0;
+      min-height: 480px;
+      max-height: 80vh;
+    }
+
+    @media (max-width: 840px) {
+      main {
+        grid-template-columns: 1fr;
+        max-height: none;
+      }
+    }
+
+    .sidebar {
+      border-right: 1px solid var(--border);
+      padding: 1rem 1.25rem 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.9rem;
+      background: radial-gradient(circle at top left, #020617 0, #020617 35%, #020617 100%);
+    }
+
+    @media (max-width: 840px) {
+      .sidebar {
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+    }
+
+    .section-title {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #6b7280;
+      margin-bottom: 0.25rem;
+    }
+
+    .control-group {
+      margin-bottom: 0.3rem;
+    }
+
+    .control-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    label {
+      font-size: 0.8rem;
+      color: #9ca3af;
+    }
+
+    select, input[type="number"] {
+      background: #020617;
+      border-radius: 0.4rem;
+      border: 1px solid #111827;
+      padding: 0.35rem 0.5rem;
+      font-size: 0.8rem;
+      color: #e5e7eb;
+      outline: none;
+      min-width: 0;
+    }
+
+    select:focus,
+    input[type="number"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent-soft);
+    }
+
+    input[type="color"] {
+      appearance: none;
+      -webkit-appearance: none;
+      border: none;
+      padding: 0;
+      width: 2.2rem;
+      height: 2.2rem;
+      border-radius: 0.6rem;
+      cursor: pointer;
+      overflow: hidden;
+      box-shadow: 0 0 0 1px #111827, 0 0 0 3px #020617;
+    }
+
+    input[type="color"]::-webkit-color-swatch-wrapper {
+      padding: 0;
+    }
+
+    input[type="color"]::-webkit-color-swatch {
+      border: none;
+    }
+
+    .btn {
+      border-radius: 999px;
+      border: 1px solid #111827;
+      background: #020617;
+      font-size: 0.8rem;
+      padding: 0.35rem 0.8rem;
+      color: #e5e7eb;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      cursor: pointer;
+      outline: none;
+      white-space: nowrap;
+      transition: background 0.12s ease, border-color 0.12s ease, transform 0.06s ease;
+    }
+
+    .btn:hover {
+      background: #030712;
+      transform: translateY(-0.5px);
+    }
+
+    .btn-primary {
+      border-color: var(--accent);
+      background: radial-gradient(circle at top left, #0ea5e9, #0369a1);
+    }
+
+    .btn-primary:hover {
+      background: radial-gradient(circle at top left, #38bdf8, #0ea5e9);
+    }
+
+    .btn-ghost {
+      background: transparent;
+    }
+
+    .btn-danger {
+      border-color: #7f1d1d;
+      background: linear-gradient(135deg, #991b1b, #450a0a);
+    }
+
+    .btn-icon {
+      width: 2.2rem;
+      height: 2.2rem;
+      border-radius: 0.7rem;
+      justify-content: center;
+      padding: 0;
+    }
+
+    .btn-icon.active {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent-soft);
+      background: #020617;
+    }
+
+    .hint {
+      font-size: 0.75rem;
+      color: #6b7280;
+      line-height: 1.35;
+    }
+
+    .hint strong {
+      color: #e5e7eb;
+      font-weight: 500;
+    }
+
+    .hint code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.75rem;
+      background: #020617;
+      border-radius: 0.25rem;
+      padding: 0.05rem 0.25rem;
+      border: 1px solid #111827;
+    }
+
+    .canvas-wrap {
+      position: relative;
+      padding: 1rem 1.25rem 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .canvas-shell {
+      flex: 1;
+      min-height: 0;
+      background: radial-gradient(circle at top left, #020617 0, #030712 40%, #020617 100%);
+      border-radius: 0.75rem;
+      border: 1px solid #111827;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.75rem;
+      overflow: auto;
+    }
+
+    .canvas-container {
+      background: #111827;
+      border-radius: 0.75rem;
+      padding: 0.5rem;
+      box-shadow:
+        0 0 0 1px rgba(15, 23, 42, 0.9),
+        0 18px 40px rgba(0, 0, 0, 0.9);
+    }
+
+    canvas {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      image-rendering: pixelated;
+      background: white;
+      border-radius: 0.4rem;
+    }
+
+    .status-bar {
+      font-size: 0.75rem;
+      color: #9ca3af;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      padding: 0.25rem 0.15rem 0;
+      flex-wrap: wrap;
+    }
+
+    .status-bar span {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.85);
+    }
+
+    .pill {
+      border-radius: 999px;
+      border: 1px solid #111827;
+      padding: 0.15rem 0.5rem;
+      background: #020617;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div>
+        <h1>
+          <span class="logo-dot"></span>
+          Pixel Studio
+        </h1>
+        <div class="subtitle">Rastergrafiken von 5×5 bis 64×64 – direkt im Browser zeichnen</div>
+      </div>
+      <div class="header-actions">
+        <button id="exportPngBtn" class="btn btn-primary" type="button">
+          PNG exportieren
+        </button>
+        <button id="exportGifBtn" class="btn btn-ghost" type="button">
+          GIF exportieren
+        </button>
+      </div>
+    </header>
+
+    <main>
+      <aside class="sidebar">
+        <div class="control-group">
+          <div class="section-title">Raster</div>
+          <div class="control-row" style="margin-bottom: 0.4rem;">
+            <label for="presetSize">Voreinstellung:</label>
+            <select id="presetSize">
+              <option value="8x8">8 × 8 (Standard)</option>
+              <option value="5x5">5 × 5</option>
+              <option value="10x10">10 × 10</option>
+              <option value="16x16">16 × 16</option>
+              <option value="32x32">32 × 32</option>
+              <option value="48x48">48 × 48</option>
+              <option value="64x64">64 × 64</option>
+            </select>
+          </div>
+          <div class="control-row">
+            <label for="customWidth">Breite:</label>
+            <input id="customWidth" type="number" min="5" max="64" value="8" />
+            <label for="customHeight">Höhe:</label>
+            <input id="customHeight" type="number" min="5" max="64" value="8" />
+            <button id="applySizeBtn" class="btn btn-ghost" type="button">Raster neu</button>
+          </div>
+          <div class="hint">
+            <strong>Bereich:</strong> 5×5 bis 64×64. Für Pixelart sind <code>8×8</code>, <code>16×16</code> oder <code>32×32</code> meist angenehm.
+          </div>
+        </div>
+
+        <div class="control-group">
+          <div class="section-title">Werkzeuge</div>
+          <div class="control-row" style="margin-bottom: 0.4rem;">
+            <label>Farbe:</label>
+            <input id="colorPicker" type="color" value="#ff0055" />
+            <button id="brushBtn" class="btn btn-icon active" type="button" title="Stift">
+              ✏️
+            </button>
+            <button id="eraserBtn" class="btn btn-icon" type="button" title="Radierer">
+              🧽
+            </button>
+          </div>
+          <div class="control-row" style="margin-bottom: 0.4rem;">
+            <button id="lineBtn" class="btn btn-icon" type="button" title="Linie">
+              ／
+            </button>
+            <button id="rectBtn" class="btn btn-icon" type="button" title="Rechteck">
+              ▢
+            </button>
+            <button id="circleBtn" class="btn btn-icon" type="button" title="Kreis">
+              ◯
+            </button>
+            <button id="triangleBtn" class="btn btn-icon" type="button" title="Dreieck">
+              △
+            </button>
+          </div>
+          <div class="hint">
+            Formen: erstes Klick setzt den Startpunkt, zweites Klick den Endpunkt.<br>
+            Stift/Radierer: Ziehen bei gedrückter Maustaste.
+          </div>
+        </div>
+
+        <div class="control-group">
+          <div class="section-title">Bildverwaltung</div>
+          <div class="control-row" style="margin-bottom: 0.4rem;">
+            <button id="saveBtn" class="btn" type="button">
+              💾 Bild speichern
+            </button>
+            <button id="loadBtn" class="btn" type="button">
+              📂 Bild laden
+            </button>
+            <input id="loadInput" type="file" accept="application/json" style="display:none" />
+          </div>
+          <div class="control-row">
+            <button id="clearBtn" class="btn btn-danger" type="button">
+              🗑️ Alles löschen
+            </button>
+          </div>
+          <div class="hint">
+            Speichern/Laden nutzt eine JSON-Datei mit Rastergröße und Farben – perfekt, um Vorlagen zu archivieren oder zu teilen.
+          </div>
+        </div>
+      </aside>
+
+      <section class="canvas-wrap">
+        <div class="canvas-shell">
+          <div class="canvas-container">
+            <canvas id="pixelCanvas" width="1024" height="1024"></canvas>
+          </div>
+        </div>
+        <div class="status-bar">
+          <span><span class="dot"></span> <span id="statusText">Bereit</span></span>
+          <span class="pill" id="gridInfo">Raster: 8 × 8 | Zelle: 128 × 128&nbsp;px</span>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      const canvas = document.getElementById("pixelCanvas");
+      const ctx = canvas.getContext("2d");
+
+      const presetSize = document.getElementById("presetSize");
+      const customWidthInput = document.getElementById("customWidth");
+      const customHeightInput = document.getElementById("customHeight");
+      const applySizeBtn = document.getElementById("applySizeBtn");
+
+      const colorPicker = document.getElementById("colorPicker");
+      const brushBtn = document.getElementById("brushBtn");
+      const eraserBtn = document.getElementById("eraserBtn");
+      const lineBtn = document.getElementById("lineBtn");
+      const rectBtn = document.getElementById("rectBtn");
+      const circleBtn = document.getElementById("circleBtn");
+      const triangleBtn = document.getElementById("triangleBtn");
+
+      const saveBtn = document.getElementById("saveBtn");
+      const loadBtn = document.getElementById("loadBtn");
+      const loadInput = document.getElementById("loadInput");
+      const clearBtn = document.getElementById("clearBtn");
+
+      const exportPngBtn = document.getElementById("exportPngBtn");
+      const exportGifBtn = document.getElementById("exportGifBtn");
+
+      const statusText = document.getElementById("statusText");
+      const gridInfo = document.getElementById("gridInfo");
+
+      const CANVAS_SIZE = 1024;
+      canvas.width = CANVAS_SIZE;
+      canvas.height = CANVAS_SIZE;
+
+      const MIN_SIZE = 5;
+      const MAX_SIZE = 64;
+
+      let gridWidth = 8;
+      let gridHeight = 8;
+      let cellWidth = CANVAS_SIZE / gridWidth;
+      let cellHeight = CANVAS_SIZE / gridHeight;
+      let grid = [];
+      let currentTool = "brush"; // "brush" | "eraser" | "line" | "rect" | "circle" | "triangle"
+      let currentColor = colorPicker.value;
+      let isDrawing = false;
+      let shapeStart = null; // {x, y} für Formen
+
+      const toolButtons = {
+        brush: brushBtn,
+        eraser: eraserBtn,
+        line: lineBtn,
+        rect: rectBtn,
+        circle: circleBtn,
+        triangle: triangleBtn,
+      };
+
+      function createEmptyGrid(width, height) {
+        return Array.from({ length: height }, () => Array(width).fill(null));
+      }
+
+      function setStatus(message) {
+        statusText.textContent = message;
+      }
+
+      function updateGridInfo() {
+        const cellW = (CANVAS_SIZE / gridWidth).toFixed(1);
+        const cellH = (CANVAS_SIZE / gridHeight).toFixed(1);
+        gridInfo.textContent = `Raster: ${gridWidth} × ${gridHeight} | Zelle: ${cellW} × ${cellH} px`;
+      }
+
+      function drawGridLines() {
+        ctx.save();
+        ctx.strokeStyle = "#e5e7eb";
+        ctx.lineWidth = 1;
+        ctx.setLineDash([2, 2]);
+        ctx.globalAlpha = 0.15;
+
+        if (gridWidth <= 64 && gridHeight <= 64) {
+          for (let x = 0; x <= gridWidth; x++) {
+            const px = x * cellWidth + 0.5;
+            ctx.beginPath();
+            ctx.moveTo(px, 0);
+            ctx.lineTo(px, CANVAS_SIZE);
+            ctx.stroke();
+          }
+          for (let y = 0; y <= gridHeight; y++) {
+            const py = y * cellHeight + 0.5;
+            ctx.beginPath();
+            ctx.moveTo(0, py);
+            ctx.lineTo(CANVAS_SIZE, py);
+            ctx.stroke();
+          }
+        }
+        ctx.restore();
+      }
+
+      function redrawCanvas() {
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+        for (let y = 0; y < gridHeight; y++) {
+          for (let x = 0; x < gridWidth; x++) {
+            const color = grid[y][x];
+            if (color) {
+              ctx.fillStyle = color;
+              ctx.fillRect(
+                x * cellWidth,
+                y * cellHeight,
+                Math.ceil(cellWidth),
+                Math.ceil(cellHeight)
+              );
+            }
+          }
+        }
+
+        drawGridLines();
+      }
+
+      function resizeGrid(newWidth, newHeight) {
+        newWidth = Math.max(MIN_SIZE, Math.min(MAX_SIZE, newWidth));
+        newHeight = Math.max(MIN_SIZE, Math.min(MAX_SIZE, newHeight));
+
+        gridWidth = newWidth;
+        gridHeight = newHeight;
+        cellWidth = CANVAS_SIZE / gridWidth;
+        cellHeight = CANVAS_SIZE / gridHeight;
+        grid = createEmptyGrid(gridWidth, gridHeight);
+        shapeStart = null;
+
+        redrawCanvas();
+        updateGridInfo();
+        setStatus(`Raster geändert auf ${gridWidth} × ${gridHeight}`);
+      }
+
+      function presetChanged() {
+        const value = presetSize.value;
+        const [w, h] = value.split("x").map(Number);
+        customWidthInput.value = w;
+        customHeightInput.value = h;
+        resizeGrid(w, h);
+      }
+
+      function applyCustomSize() {
+        const w = parseInt(customWidthInput.value, 10);
+        const h = parseInt(customHeightInput.value, 10);
+
+        if (Number.isNaN(w) || Number.isNaN(h)) {
+          setStatus("Bitte gültige Zahlen für Breite und Höhe eingeben.");
+          return;
+        }
+
+        if (w < MIN_SIZE || w > MAX_SIZE || h < MIN_SIZE || h > MAX_SIZE) {
+          setStatus(`Rastergröße muss zwischen ${MIN_SIZE} und ${MAX_SIZE} liegen.`);
+          return;
+        }
+
+        resizeGrid(w, h);
+      }
+
+      function setTool(tool) {
+        currentTool = tool;
+        shapeStart = null;
+
+        Object.values(toolButtons).forEach(btn => btn.classList.remove("active"));
+        if (toolButtons[tool]) {
+          toolButtons[tool].classList.add("active");
+        }
+
+        const labelMap = {
+          brush: "Stift aktiviert",
+          eraser: "Radierer aktiviert",
+          line: "Linienwerkzeug: Start- und Endpunkt per Klick wählen.",
+          rect: "Rechteckwerkzeug: zwei Ecken per Klick wählen.",
+          circle: "Kreiswerkzeug: Rahmen per zwei Klicks bestimmen.",
+          triangle: "Dreieckwerkzeug: Basis per Klick wählen, zweite Ecke bestimmt die Spitze.",
+        };
+        setStatus(labelMap[tool] || "Werkzeug geändert");
+      }
+
+      function clearCanvas() {
+        grid = createEmptyGrid(gridWidth, gridHeight);
+        shapeStart = null;
+        redrawCanvas();
+        setStatus("Raster wurde geleert");
+      }
+
+      function exportPNG() {
+        const link = document.createElement("a");
+        link.download = `pixel-art-${gridWidth}x${gridHeight}.png`;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+        setStatus("PNG wurde exportiert");
+      }
+
+      function exportGIF() {
+        // Hinweis: Unterstützung von image/gif hängt vom Browser ab.
+        const dataUrl = canvas.toDataURL("image/gif");
+        const link = document.createElement("a");
+        link.download = `pixel-art-${gridWidth}x${gridHeight}.gif`;
+        link.href = dataUrl;
+        link.click();
+        setStatus("GIF wurde exportiert (abhängig vom Browser-Support)");
+      }
+
+      function saveImage() {
+        const data = {
+          width: gridWidth,
+          height: gridHeight,
+          cells: grid,
+        };
+
+        const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `pixel-art-${gridWidth}x${gridHeight}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        setStatus("Bild als JSON gespeichert");
+      }
+
+      function loadImageFromFile(file) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          try {
+            const data = JSON.parse(e.target.result);
+            if (!data || typeof data.width !== "number" || typeof data.height !== "number" || !Array.isArray(data.cells)) {
+              throw new Error("Ungültiges Dateiformat");
+            }
+            if (
+              data.width < MIN_SIZE || data.width > MAX_SIZE ||
+              data.height < MIN_SIZE || data.height > MAX_SIZE
+            ) {
+              throw new Error(`Rastergröße muss zwischen ${MIN_SIZE} und ${MAX_SIZE} liegen.`);
+            }
+
+            gridWidth = data.width;
+            gridHeight = data.height;
+            cellWidth = CANVAS_SIZE / gridWidth;
+            cellHeight = CANVAS_SIZE / gridHeight;
+            grid = data.cells;
+            shapeStart = null;
+
+            customWidthInput.value = gridWidth;
+            customHeightInput.value = gridHeight;
+
+            redrawCanvas();
+            updateGridInfo();
+            setStatus(`Bild geladen (${gridWidth} × ${gridHeight})`);
+          } catch (err) {
+            console.error(err);
+            setStatus("Fehler beim Laden der Datei: " + err.message);
+          }
+        };
+        reader.readAsText(file);
+      }
+
+      function getCellFromEvent(ev) {
+        const rect = canvas.getBoundingClientRect();
+        const point =
+          (ev.touches && ev.touches[0]) ||
+          (ev.changedTouches && ev.changedTouches[0]) ||
+          ev;
+
+        const clientX = point.clientX;
+        const clientY = point.clientY;
+        const x = Math.floor(((clientX - rect.left) / rect.width) * gridWidth);
+        const y = Math.floor(((clientY - rect.top) / rect.height) * gridHeight);
+
+        if (x < 0 || x >= gridWidth || y < 0 || y >= gridHeight) {
+          return null;
+        }
+        return { x, y };
+      }
+
+      function paintCell(x, y) {
+        if (x < 0 || x >= gridWidth || y < 0 || y >= gridHeight) return;
+
+        if (currentTool === "brush") {
+          grid[y][x] = currentColor;
+        } else if (currentTool === "eraser") {
+          grid[y][x] = null;
+        } else {
+          return;
+        }
+
+        const color = grid[y][x];
+        ctx.fillStyle = color ? color : "#ffffff";
+        ctx.fillRect(
+          x * cellWidth,
+          y * cellHeight,
+          Math.ceil(cellWidth),
+          Math.ceil(cellHeight)
+        );
+
+        if (gridWidth <= 64 && gridHeight <= 64) {
+          ctx.save();
+          ctx.strokeStyle = "rgba(0,0,0,0.06)";
+          ctx.lineWidth = 1;
+          ctx.strokeRect(
+            x * cellWidth + 0.5,
+            y * cellHeight + 0.5,
+            Math.ceil(cellWidth),
+            Math.ceil(cellHeight)
+          );
+          ctx.restore();
+        }
+      }
+
+      // Bresenham-Linie im Raster
+      function drawLine(start, end, color) {
+        let x0 = start.x;
+        let y0 = start.y;
+        let x1 = end.x;
+        let y1 = end.y;
+
+        const dx = Math.abs(x1 - x0);
+        const dy = Math.abs(y1 - y0);
+        const sx = x0 < x1 ? 1 : -1;
+        const sy = y0 < y1 ? 1 : -1;
+        let err = dx - dy;
+
+        while (true) {
+          if (x0 >= 0 && x0 < gridWidth && y0 >= 0 && y0 < gridHeight) {
+            grid[y0][x0] = color;
+          }
+          if (x0 === x1 && y0 === y1) break;
+          const e2 = 2 * err;
+          if (e2 > -dy) {
+            err -= dy;
+            x0 += sx;
+          }
+          if (e2 < dx) {
+            err += dx;
+            y0 += sy;
+          }
+        }
+      }
+
+      function drawRectShape(start, end, color) {
+        const x1 = Math.min(start.x, end.x);
+        const x2 = Math.max(start.x, end.x);
+        const y1 = Math.min(start.y, end.y);
+        const y2 = Math.max(start.y, end.y);
+
+        for (let x = x1; x <= x2; x++) {
+          if (y1 >= 0 && y1 < gridHeight) grid[y1][x] = color;
+          if (y2 >= 0 && y2 < gridHeight) grid[y2][x] = color;
+        }
+        for (let y = y1; y <= y2; y++) {
+          if (x1 >= 0 && x1 < gridWidth) grid[y][x1] = color;
+          if (x2 >= 0 && x2 < gridWidth) grid[y][x2] = color;
+        }
+      }
+
+      function drawCircleShape(start, end, color) {
+        const x1 = Math.min(start.x, end.x);
+        const x2 = Math.max(start.x, end.x);
+        const y1 = Math.min(start.y, end.y);
+        const y2 = Math.max(start.y, end.y);
+
+        const cx = (x1 + x2) / 2;
+        const cy = (y1 + y2) / 2;
+        const rx = (x2 - x1) / 2 || 0.5;
+        const ry = (y2 - y1) / 2 || 0.5;
+
+        for (let y = y1; y <= y2; y++) {
+          for (let x = x1; x <= x2; x++) {
+            const dx = (x - cx) / rx;
+            const dy = (y - cy) / ry;
+            const dist = dx * dx + dy * dy;
+            if (dist <= 1.1 && dist >= 0.6) {
+              if (x >= 0 && x < gridWidth && y >= 0 && y < gridHeight) {
+                grid[y][x] = color;
+              }
+            }
+          }
+        }
+      }
+
+      function drawTriangleShape(start, end, color) {
+        // Einfaches Dreieck: Basis unten, Spitze oben
+        const x1 = Math.min(start.x, end.x);
+        const x2 = Math.max(start.x, end.x);
+        const y1 = Math.min(start.y, end.y);
+        const y2 = Math.max(start.y, end.y);
+
+        const baseLeft = { x: x1, y: y2 };
+        const baseRight = { x: x2, y: y2 };
+        const top = { x: Math.round((x1 + x2) / 2), y: y1 };
+
+        drawLine(baseLeft, baseRight, color);
+        drawLine(baseLeft, top, color);
+        drawLine(baseRight, top, color);
+      }
+
+      function applyShape(start, end) {
+        if (!start || !end) return;
+        const color = currentColor;
+
+        switch (currentTool) {
+          case "line":
+            drawLine(start, end, color);
+            break;
+          case "rect":
+            drawRectShape(start, end, color);
+            break;
+          case "circle":
+            drawCircleShape(start, end, color);
+            break;
+          case "triangle":
+            drawTriangleShape(start, end, color);
+            break;
+          default:
+            return;
+        }
+
+        redrawCanvas();
+      }
+
+      function handlePointerDown(ev) {
+        const cell = getCellFromEvent(ev);
+        if (!cell) return;
+
+        if (currentTool === "brush" || currentTool === "eraser") {
+          isDrawing = true;
+          shapeStart = null;
+          paintCell(cell.x, cell.y);
+        } else {
+          // Formen: erster Klick = Start, zweiter Klick = Ende + Zeichnen
+          if (!shapeStart) {
+            shapeStart = cell;
+            setStatus("Startpunkt gesetzt – wähle einen zweiten Punkt.");
+          } else {
+            const endCell = cell;
+            applyShape(shapeStart, endCell);
+            shapeStart = null;
+            setStatus("Form gezeichnet.");
+          }
+        }
+      }
+
+      function handlePointerMove(ev) {
+        if (!isDrawing) return;
+        if (!(currentTool === "brush" || currentTool === "eraser")) return;
+        const cell = getCellFromEvent(ev);
+        if (!cell) return;
+        paintCell(cell.x, cell.y);
+      }
+
+      function handlePointerUp() {
+        isDrawing = false;
+      }
+
+      // Event-Listener
+      presetSize.addEventListener("change", presetChanged);
+      applySizeBtn.addEventListener("click", applyCustomSize);
+
+      brushBtn.addEventListener("click", () => setTool("brush"));
+      eraserBtn.addEventListener("click", () => setTool("eraser"));
+      lineBtn.addEventListener("click", () => setTool("line"));
+      rectBtn.addEventListener("click", () => setTool("rect"));
+      circleBtn.addEventListener("click", () => setTool("circle"));
+      triangleBtn.addEventListener("click", () => setTool("triangle"));
+
+      colorPicker.addEventListener("input", (e) => {
+        currentColor = e.target.value;
+        if (currentTool === "brush" || currentTool === "line" || currentTool === "rect" || currentTool === "circle" || currentTool === "triangle") {
+          setStatus(`Farbe geändert: ${currentColor}`);
+        }
+      });
+
+      clearBtn.addEventListener("click", clearCanvas);
+
+      exportPngBtn.addEventListener("click", exportPNG);
+      exportGifBtn.addEventListener("click", exportGIF);
+
+      saveBtn.addEventListener("click", saveImage);
+      loadBtn.addEventListener("click", () => loadInput.click());
+      loadInput.addEventListener("change", (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        loadImageFromFile(file);
+        loadInput.value = "";
+      });
+
+      canvas.addEventListener("mousedown", handlePointerDown);
+      canvas.addEventListener("mousemove", handlePointerMove);
+      window.addEventListener("mouseup", handlePointerUp);
+
+      canvas.addEventListener("touchstart", function (e) {
+        e.preventDefault();
+        handlePointerDown(e);
+      }, { passive: false });
+
+      canvas.addEventListener("touchmove", function (e) {
+        e.preventDefault();
+        handlePointerMove(e);
+      }, { passive: false });
+
+      canvas.addEventListener("touchend", function (e) {
+        e.preventDefault();
+        handlePointerUp();
+      }, { passive: false });
+
+      // Initialisierung
+      grid = createEmptyGrid(gridWidth, gridHeight);
+      redrawCanvas();
+      updateGridInfo();
+      setTool("brush");
+      setStatus("Bereit – Raster auswählen und loszeichnen.");
+    })();
+  </script>
+</body>
+</html>
