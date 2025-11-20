@@ -2,8 +2,10 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <title>Pixely – Rastergrafik Editor</title>
+  <title>Pixely – Pixel-Editor</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- GIF.js für animierte GIF-Erstellung -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
   <style>
     :root {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -14,9 +16,7 @@
       --border: #1f2937;
     }
 
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
@@ -40,12 +40,12 @@
     }
 
     header {
-      padding: 0.9rem 1.5rem;
+      padding: 0.75rem 1.25rem;
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 1rem;
+      gap: 0.75rem;
       flex-wrap: wrap;
     }
 
@@ -58,17 +58,12 @@
       margin: 0;
     }
 
-    header h1 span.logo-dot {
+    .logo-dot {
       width: 10px;
       height: 10px;
       border-radius: 999px;
       background: linear-gradient(135deg, #22c55e, #38bdf8);
       box-shadow: 0 0 12px rgba(56, 189, 248, 0.8);
-    }
-
-    header .subtitle {
-      font-size: 0.8rem;
-      color: #9ca3af;
     }
 
     .header-actions {
@@ -80,9 +75,9 @@
 
     main {
       display: grid;
-      grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
+      grid-template-columns: minmax(230px, 320px) minmax(0, 1fr);
       gap: 0;
-      min-height: 480px;
+      min-height: 460px;
       max-height: 80vh;
     }
 
@@ -95,11 +90,11 @@
 
     .sidebar {
       border-right: 1px solid var(--border);
-      padding: 1rem 1.25rem 1.25rem;
+      padding: 0.8rem 1rem 1rem;
       display: flex;
       flex-direction: column;
-      gap: 0.9rem;
-      background: radial-gradient(circle at top left, #020617 0, #020617 35%, #020617 100%);
+      gap: 0.65rem;
+      background: #020617;
     }
 
     @media (max-width: 840px) {
@@ -109,22 +104,23 @@
       }
     }
 
+    .section {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
     .section-title {
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       text-transform: uppercase;
       letter-spacing: 0.08em;
       color: #6b7280;
-      margin-bottom: 0.25rem;
     }
 
-    .control-group {
-      margin-bottom: 0.3rem;
-    }
-
-    .control-row {
+    .row {
       display: flex;
       flex-wrap: wrap;
-      gap: 0.5rem;
+      gap: 0.4rem;
       align-items: center;
     }
 
@@ -133,11 +129,13 @@
       color: #9ca3af;
     }
 
-    select, input[type="number"] {
+    select,
+    input[type="number"],
+    input[type="range"] {
       background: #020617;
       border-radius: 0.4rem;
       border: 1px solid #111827;
-      padding: 0.35rem 0.5rem;
+      padding: 0.3rem 0.45rem;
       font-size: 0.8rem;
       color: #e5e7eb;
       outline: none;
@@ -145,9 +143,14 @@
     }
 
     select:focus,
-    input[type="number"]:focus {
+    input[type="number"]:focus,
+    input[type="range"]:focus {
       border-color: var(--accent);
       box-shadow: 0 0 0 1px var(--accent-soft);
+    }
+
+    input[type="range"] {
+      flex: 1;
     }
 
     input[type="color"] {
@@ -155,32 +158,28 @@
       -webkit-appearance: none;
       border: none;
       padding: 0;
-      width: 2.2rem;
-      height: 2.2rem;
+      width: 2.1rem;
+      height: 2.1rem;
       border-radius: 0.6rem;
       cursor: pointer;
       overflow: hidden;
       box-shadow: 0 0 0 1px #111827, 0 0 0 3px #020617;
     }
 
-    input[type="color"]::-webkit-color-swatch-wrapper {
-      padding: 0;
-    }
-
-    input[type="color"]::-webkit-color-swatch {
-      border: none;
-    }
+    input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+    input[type="color"]::-webkit-color-swatch { border: none; }
 
     .btn {
       border-radius: 999px;
       border: 1px solid #111827;
       background: #020617;
       font-size: 0.8rem;
-      padding: 0.35rem 0.8rem;
+      padding: 0.3rem 0.75rem;
       color: #e5e7eb;
       display: inline-flex;
       align-items: center;
-      gap: 0.35rem;
+      justify-content: center;
+      gap: 0.3rem;
       cursor: pointer;
       outline: none;
       white-space: nowrap;
@@ -201,20 +200,10 @@
       background: radial-gradient(circle at top left, #38bdf8, #0ea5e9);
     }
 
-    .btn-ghost {
-      background: transparent;
-    }
-
-    .btn-danger {
-      border-color: #7f1d1d;
-      background: linear-gradient(135deg, #991b1b, #450a0a);
-    }
-
     .btn-icon {
-      width: 2.2rem;
-      height: 2.2rem;
+      width: 2.1rem;
+      height: 2.1rem;
       border-radius: 0.7rem;
-      justify-content: center;
       padding: 0;
     }
 
@@ -224,32 +213,26 @@
       background: #020617;
     }
 
-    .hint {
-      font-size: 0.75rem;
-      color: #6b7280;
-      line-height: 1.35;
+    .btn-ghost {
+      background: transparent;
     }
 
-    .hint strong {
-      color: #e5e7eb;
-      font-weight: 500;
+    .btn-danger {
+      border-color: #7f1d1d;
+      background: linear-gradient(135deg, #991b1b, #450a0a);
     }
 
-    .hint code {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      font-size: 0.75rem;
-      background: #020617;
-      border-radius: 0.25rem;
-      padding: 0.05rem 0.25rem;
-      border: 1px solid #111827;
+    .toggle-btn {
+      font-size: 0.8rem;
+      padding-inline: 0.6rem;
     }
 
     .canvas-wrap {
       position: relative;
-      padding: 1rem 1.25rem 1.25rem;
+      padding: 0.9rem 1.1rem 1.1rem;
       display: flex;
       flex-direction: column;
-      gap: 0.75rem;
+      gap: 0.5rem;
     }
 
     .canvas-shell {
@@ -261,14 +244,14 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 0.75rem;
+      padding: 0.6rem;
       overflow: auto;
     }
 
     .canvas-container {
       background: #111827;
       border-radius: 0.75rem;
-      padding: 0.5rem;
+      padding: 0.45rem;
       box-shadow:
         0 0 0 1px rgba(15, 23, 42, 0.9),
         0 18px 40px rgba(0, 0, 0, 0.9);
@@ -290,28 +273,14 @@
       align-items: center;
       justify-content: space-between;
       gap: 0.5rem;
-      padding: 0.25rem 0.15rem 0;
       flex-wrap: wrap;
-    }
-
-    .status-bar span {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.25rem;
-    }
-
-    .dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 999px;
-      background: var(--accent);
-      box-shadow: 0 0 8px rgba(56, 189, 248, 0.85);
+      padding: 0 0.1rem;
     }
 
     .pill {
       border-radius: 999px;
       border: 1px solid #111827;
-      padding: 0.15rem 0.5rem;
+      padding: 0.1rem 0.45rem;
       background: #020617;
     }
   </style>
@@ -319,117 +288,82 @@
 <body>
   <div class="app">
     <header>
-      <div>
-        <h1>
-          <span class="logo-dot"></span>
-          Pixely
-        </h1>
-        <div class="subtitle">Rastergrafiken von 5×5 bis 64×64 – ideal für den Unterricht</div>
-      </div>
+      <h1>
+        <span class="logo-dot"></span>
+        Pixely
+      </h1>
       <div class="header-actions">
-        <button id="exportPngBtn" class="btn btn-primary" type="button">
-          PNG exportieren
-        </button>
-        <button id="exportGifBtn" class="btn btn-ghost" type="button">
-          GIF exportieren
-        </button>
+        <button id="exportPngBtn" class="btn btn-primary" type="button">PNG</button>
+        <button id="exportGifBtn" class="btn btn-ghost" type="button">GIF</button>
       </div>
     </header>
 
     <main>
       <aside class="sidebar">
-        <div class="control-group">
+        <!-- Frames -->
+        <div class="section">
+          <div class="section-title">Frames</div>
+          <div class="row">
+            <button id="prevFrameBtn" class="btn btn-icon" title="Vorheriger Frame">◀</button>
+            <div id="frameLabel" class="pill">Frame 1 / 1</div>
+            <button id="nextFrameBtn" class="btn btn-icon" title="Nächster Frame">▶</button>
+            <button id="addFrameBtn" class="btn btn-icon" title="Frame hinzufügen">＋</button>
+            <button id="deleteFrameBtn" class="btn btn-icon" title="Frame löschen">🗑</button>
+          </div>
+        </div>
+
+        <!-- Raster -->
+        <div class="section">
           <div class="section-title">Raster</div>
-          <div class="control-row" style="margin-bottom: 0.4rem;">
-            <label for="presetSize">Voreinstellung:</label>
+          <div class="row">
+            <label for="presetSize">Preset</label>
             <select id="presetSize">
-              <option value="8x8">8 × 8 (Standard)</option>
-              <option value="5x5">5 × 5</option>
-              <option value="10x10">10 × 10</option>
-              <option value="16x16">16 × 16</option>
-              <option value="32x32">32 × 32</option>
-              <option value="48x48">48 × 48</option>
-              <option value="64x64">64 × 64</option>
+              <option value="8x8">8×8</option>
+              <option value="5x5">5×5</option>
+              <option value="16x16">16×16</option>
+              <option value="32x32">32×32</option>
+              <option value="48x48">48×48</option>
+              <option value="64x64">64×64</option>
             </select>
           </div>
-          <div class="control-row">
-            <label for="customWidth">Breite:</label>
+          <div class="row">
+            <label for="customWidth">B</label>
             <input id="customWidth" type="number" min="5" max="64" value="8" />
-            <label for="customHeight">Höhe:</label>
+            <label for="customHeight">H</label>
             <input id="customHeight" type="number" min="5" max="64" value="8" />
-            <button id="applySizeBtn" class="btn btn-ghost" type="button">Raster neu</button>
-          </div>
-          <div class="hint">
-            <strong>Bereich:</strong> 5×5 bis 64×64. Für Pixelart sind <code>8×8</code>, <code>16×16</code> oder <code>32×32</code> meist angenehm.
+            <button id="applySizeBtn" class="btn btn-icon" title="Raster neu">↻</button>
           </div>
         </div>
 
-        <div class="control-group">
-          <div class="section-title">Arbeitsflächen</div>
-          <div class="control-row">
-            <label for="workspaceSelect">Aktive Fläche:</label>
-            <select id="workspaceSelect">
-              <option value="0">Arbeitsfläche 1</option>
-              <option value="1">Arbeitsfläche 2</option>
-              <option value="2">Arbeitsfläche 3</option>
-              <option value="3">Arbeitsfläche 4</option>
-            </select>
-          </div>
-          <div class="hint">
-            Nutze mehrere Arbeitsflächen für verschiedene Gruppen oder Schüler*innen auf einem Gerät.
-          </div>
-        </div>
-
-        <div class="control-group">
+        <!-- Tools -->
+        <div class="section">
           <div class="section-title">Werkzeuge</div>
-          <div class="control-row" style="margin-bottom: 0.4rem;">
-            <label>Farbe:</label>
+          <div class="row">
             <input id="colorPicker" type="color" value="#ff0055" />
-            <button id="brushBtn" class="btn btn-icon active" type="button" title="Stift">
-              ✏️
-            </button>
-            <button id="eraserBtn" class="btn btn-icon" type="button" title="Radierer">
-              🧽
-            </button>
+            <button id="brushBtn" class="btn btn-icon active" title="Stift">✏️</button>
+            <button id="eraserBtn" class="btn btn-icon" title="Radierer">🧽</button>
+            <button id="rectBtn" class="btn btn-icon" title="Rechteck">▢</button>
+            <button id="circleBtn" class="btn btn-icon" title="Kreis/Oval">◯</button>
           </div>
-          <div class="control-row" style="margin-bottom: 0.4rem;">
-            <button id="lineBtn" class="btn btn-icon" type="button" title="Linie">
-              ／
-            </button>
-            <button id="rectBtn" class="btn btn-icon" type="button" title="Rechteck">
-              ▢
-            </button>
-            <button id="circleBtn" class="btn btn-icon" type="button" title="Kreis">
-              ◯
-            </button>
-            <button id="triangleBtn" class="btn btn-icon" type="button" title="Dreieck">
-              △
-            </button>
+          <div class="row">
+            <button id="fillToggleBtn" class="btn toggle-btn" title="Fläche füllen">Fill</button>
+            <button id="mirrorToggleBtn" class="btn toggle-btn" title="Vertikaler Spiegelstift">⇋</button>
           </div>
-          <div class="hint">
-            Formen: Maustaste drücken, ziehen, loslassen – Größe wird mit der Maus angepasst. <br>
-            Innenflächen bleiben weiß (nur Umrisse).
+          <div class="row">
+            <label for="brushSize">Stift</label>
+            <input id="brushSize" type="range" min="1" max="4" value="1" />
+            <span id="brushSizeLabel" style="font-size:0.75rem;color:#9ca3af;">1</span>
           </div>
         </div>
 
-        <div class="control-group">
-          <div class="section-title">Bildverwaltung</div>
-          <div class="control-row" style="margin-bottom: 0.4rem;">
-            <button id="saveBtn" class="btn" type="button">
-              💾 Bild speichern
-            </button>
-            <button id="loadBtn" class="btn" type="button">
-              📂 Bild laden
-            </button>
+        <!-- Speicher -->
+        <div class="section">
+          <div class="section-title">Bild</div>
+          <div class="row">
+            <button id="saveBtn" class="btn" type="button">💾</button>
+            <button id="loadBtn" class="btn" type="button">📂</button>
+            <button id="clearBtn" class="btn btn-danger" type="button">Clear</button>
             <input id="loadInput" type="file" accept="application/json" style="display:none" />
-          </div>
-          <div class="control-row">
-            <button id="clearBtn" class="btn btn-danger" type="button">
-              🗑️ Alles löschen
-            </button>
-          </div>
-          <div class="hint">
-            Speichern/Laden nutzt eine JSON-Datei mit Rastergröße und Farben – perfekt, um Vorlagen zu archivieren oder zu teilen.
           </div>
         </div>
       </aside>
@@ -441,8 +375,8 @@
           </div>
         </div>
         <div class="status-bar">
-          <span><span class="dot"></span> <span id="statusText">Bereit</span></span>
-          <span class="pill" id="gridInfo">Raster: 8 × 8 | Zelle: 128 × 128&nbsp;px</span>
+          <div id="statusText">Bereit</div>
+          <div id="gridInfo" class="pill">8×8</div>
         </div>
       </section>
     </main>
@@ -458,15 +392,21 @@
       const customHeightInput = document.getElementById("customHeight");
       const applySizeBtn = document.getElementById("applySizeBtn");
 
-      const workspaceSelect = document.getElementById("workspaceSelect");
+      const prevFrameBtn = document.getElementById("prevFrameBtn");
+      const nextFrameBtn = document.getElementById("nextFrameBtn");
+      const addFrameBtn = document.getElementById("addFrameBtn");
+      const deleteFrameBtn = document.getElementById("deleteFrameBtn");
+      const frameLabel = document.getElementById("frameLabel");
 
       const colorPicker = document.getElementById("colorPicker");
       const brushBtn = document.getElementById("brushBtn");
       const eraserBtn = document.getElementById("eraserBtn");
-      const lineBtn = document.getElementById("lineBtn");
       const rectBtn = document.getElementById("rectBtn");
       const circleBtn = document.getElementById("circleBtn");
-      const triangleBtn = document.getElementById("triangleBtn");
+      const fillToggleBtn = document.getElementById("fillToggleBtn");
+      const mirrorToggleBtn = document.getElementById("mirrorToggleBtn");
+      const brushSizeInput = document.getElementById("brushSize");
+      const brushSizeLabel = document.getElementById("brushSizeLabel");
 
       const saveBtn = document.getElementById("saveBtn");
       const loadBtn = document.getElementById("loadBtn");
@@ -490,10 +430,16 @@
       let gridHeight = 8;
       let cellWidth = CANVAS_SIZE / gridWidth;
       let cellHeight = CANVAS_SIZE / gridHeight;
-      let grid = [];
 
-      let currentTool = "brush"; // "brush" | "eraser" | "line" | "rect" | "circle" | "triangle"
+      let frames = [];
+      let currentFrameIndex = 0;
+
+      let currentTool = "brush"; // "brush" | "eraser" | "rect" | "circle"
       let currentColor = colorPicker.value;
+      let brushSize = 1;
+      let fillMode = false;
+      let mirrorMode = false;
+
       let isDrawing = false;
       let isShapeDrawing = false;
       let shapeStart = null;
@@ -502,92 +448,88 @@
       const toolButtons = {
         brush: brushBtn,
         eraser: eraserBtn,
-        line: lineBtn,
         rect: rectBtn,
         circle: circleBtn,
-        triangle: triangleBtn,
       };
 
-      const NUM_WORKSPACES = workspaceSelect.options.length;
-      const workspaces = [];
-      
+      function setStatus(msg) {
+        statusText.textContent = msg;
+      }
+
       function createEmptyGrid(width, height) {
         return Array.from({ length: height }, () => Array(width).fill(null));
       }
 
-      // Arbeitsflächen initialisieren
-      for (let i = 0; i < NUM_WORKSPACES; i++) {
-        workspaces.push({
-          name: workspaceSelect.options[i].textContent,
-          width: gridWidth,
-          height: gridHeight,
-          cells: createEmptyGrid(gridWidth, gridHeight),
-        });
+      function initFrames() {
+        frames = [createEmptyGrid(gridWidth, gridHeight)];
+        currentFrameIndex = 0;
       }
-      let currentWorkspaceIndex = 0;
-      grid = workspaces[0].cells;
 
-      function setStatus(message) {
-        statusText.textContent = message;
+      function getCurrentGrid() {
+        return frames[currentFrameIndex];
       }
 
       function updateGridInfo() {
-        const cellW = (CANVAS_SIZE / gridWidth).toFixed(1);
-        const cellH = (CANVAS_SIZE / gridHeight).toFixed(1);
-        gridInfo.textContent = `Raster: ${gridWidth} × ${gridHeight} | Zelle: ${cellW} × ${cellH} px`;
+        gridInfo.textContent = `${gridWidth}×${gridHeight}`;
       }
 
-      function drawGridLines() {
-        ctx.save();
-        ctx.strokeStyle = "#d1d5db";
-        ctx.lineWidth = 2; // etwas breitere Linien
-        ctx.setLineDash([]);
-        ctx.globalAlpha = 0.7;
-
-        for (let x = 0; x <= gridWidth; x++) {
-          const px = x * cellWidth + 0.5;
-          ctx.beginPath();
-          ctx.moveTo(px, 0);
-          ctx.lineTo(px, CANVAS_SIZE);
-          ctx.stroke();
-        }
-        for (let y = 0; y <= gridHeight; y++) {
-          const py = y * cellHeight + 0.5;
-          ctx.beginPath();
-          ctx.moveTo(0, py);
-          ctx.lineTo(CANVAS_SIZE, py);
-          ctx.stroke();
-        }
-        ctx.restore();
+      function updateFrameLabel() {
+        frameLabel.textContent = `Frame ${currentFrameIndex + 1} / ${frames.length}`;
       }
 
-      function drawFromGrid(dataGrid) {
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+      function drawGridToContext(ctxTarget, dataGrid, width, height, withLines) {
+        const cw = CANVAS_SIZE / width;
+        const ch = CANVAS_SIZE / height;
 
-        for (let y = 0; y < gridHeight; y++) {
-          for (let x = 0; x < gridWidth; x++) {
+        ctxTarget.fillStyle = "#ffffff";
+        ctxTarget.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
             const color = dataGrid[y][x];
             if (color) {
-              ctx.fillStyle = color;
-              ctx.fillRect(
-                x * cellWidth,
-                y * cellHeight,
-                Math.ceil(cellWidth),
-                Math.ceil(cellHeight)
+              ctxTarget.fillStyle = color;
+              ctxTarget.fillRect(
+                x * cw,
+                y * ch,
+                Math.ceil(cw),
+                Math.ceil(ch)
               );
             }
           }
         }
 
-        drawGridLines();
+        if (withLines) {
+          ctxTarget.save();
+          ctxTarget.strokeStyle = "#d1d5db";
+          ctxTarget.lineWidth = 2;
+          ctxTarget.setLineDash([]);
+          ctxTarget.globalAlpha = 0.7;
+
+          for (let x = 0; x <= width; x++) {
+            const px = x * cw + 0.5;
+            ctxTarget.beginPath();
+            ctxTarget.moveTo(px, 0);
+            ctxTarget.lineTo(px, CANVAS_SIZE);
+            ctxTarget.stroke();
+          }
+          for (let y = 0; y <= height; y++) {
+            const py = y * ch + 0.5;
+            ctxTarget.beginPath();
+            ctxTarget.moveTo(0, py);
+            ctxTarget.lineTo(CANVAS_SIZE, py);
+            ctxTarget.stroke();
+          }
+          ctxTarget.restore();
+        }
       }
 
       function redrawCanvas() {
-        drawFromGrid(grid);
+        const grid = getCurrentGrid();
+        drawGridToContext(ctx, grid, gridWidth, gridHeight, true);
       }
 
-      function resizeGrid(newWidth, newHeight) {
+      function resizeAllFrames(newWidth, newHeight) {
         newWidth = Math.max(MIN_SIZE, Math.min(MAX_SIZE, newWidth));
         newHeight = Math.max(MIN_SIZE, Math.min(MAX_SIZE, newHeight));
 
@@ -595,125 +537,73 @@
         gridHeight = newHeight;
         cellWidth = CANVAS_SIZE / gridWidth;
         cellHeight = CANVAS_SIZE / gridHeight;
-        grid = createEmptyGrid(gridWidth, gridHeight);
 
-        const ws = workspaces[currentWorkspaceIndex];
-        ws.width = gridWidth;
-        ws.height = gridHeight;
-        ws.cells = grid;
-
+        frames = frames.map(() => createEmptyGrid(gridWidth, gridHeight));
+        currentFrameIndex = 0;
         shapeStart = null;
         shapeCurrent = null;
         isShapeDrawing = false;
 
         redrawCanvas();
         updateGridInfo();
-        setStatus(`Raster geändert auf ${gridWidth} × ${gridHeight}`);
+        updateFrameLabel();
+        setStatus(`Raster: ${gridWidth}×${gridHeight}`);
       }
 
       function presetChanged() {
-        const value = presetSize.value;
-        const [w, h] = value.split("x").map(Number);
+        const [w, h] = presetSize.value.split("x").map(Number);
         customWidthInput.value = w;
         customHeightInput.value = h;
-        resizeGrid(w, h);
+        resizeAllFrames(w, h);
       }
 
       function applyCustomSize() {
         const w = parseInt(customWidthInput.value, 10);
         const h = parseInt(customHeightInput.value, 10);
-
         if (Number.isNaN(w) || Number.isNaN(h)) {
-          setStatus("Bitte gültige Zahlen für Breite und Höhe eingeben.");
+          setStatus("Ungültige Rastergröße");
           return;
         }
-
         if (w < MIN_SIZE || w > MAX_SIZE || h < MIN_SIZE || h > MAX_SIZE) {
-          setStatus(`Rastergröße muss zwischen ${MIN_SIZE} und ${MAX_SIZE} liegen.`);
+          setStatus(`Raster 5–64 zulässig`);
           return;
         }
-
-        resizeGrid(w, h);
-      }
-
-      function loadWorkspace(index) {
-        if (index === currentWorkspaceIndex) return;
-        currentWorkspaceIndex = index;
-        const ws = workspaces[index];
-        gridWidth = ws.width;
-        gridHeight = ws.height;
-        cellWidth = CANVAS_SIZE / gridWidth;
-        cellHeight = CANVAS_SIZE / gridHeight;
-        grid = ws.cells;
-
-        customWidthInput.value = gridWidth;
-        customHeightInput.value = gridHeight;
-
-        shapeStart = null;
-        shapeCurrent = null;
-        isShapeDrawing = false;
-
-        redrawCanvas();
-        updateGridInfo();
-        setStatus(`Wechsel zu ${ws.name}`);
+        resizeAllFrames(w, h);
       }
 
       function setTool(tool) {
         currentTool = tool;
+        isShapeDrawing = false;
         shapeStart = null;
         shapeCurrent = null;
-        isShapeDrawing = false;
-
         Object.values(toolButtons).forEach(btn => btn.classList.remove("active"));
-        if (toolButtons[tool]) {
-          toolButtons[tool].classList.add("active");
-        }
-
-        const labelMap = {
-          brush: "Stift aktiviert",
-          eraser: "Radierer aktiviert",
-          line: "Linienwerkzeug: mit der Maus ziehen, um die Länge zu bestimmen.",
-          rect: "Rechteckwerkzeug: mit der Maus ziehen, um die Größe anzupassen.",
-          circle: "Kreiswerkzeug: ziehe für Größe und Position.",
-          triangle: "Dreieckwerkzeug: ziehe für Basis und Höhe.",
-        };
-        setStatus(labelMap[tool] || "Werkzeug geändert");
+        if (toolButtons[tool]) toolButtons[tool].classList.add("active");
       }
 
-      function clearCanvas() {
-        grid = createEmptyGrid(gridWidth, gridHeight);
-        workspaces[currentWorkspaceIndex].cells = grid;
+      function toggleFill() {
+        fillMode = !fillMode;
+        fillToggleBtn.classList.toggle("active", fillMode);
+      }
+
+      function toggleMirror() {
+        mirrorMode = !mirrorMode;
+        mirrorToggleBtn.classList.toggle("active", mirrorMode);
+      }
+
+      function clearCurrentFrame() {
+        frames[currentFrameIndex] = createEmptyGrid(gridWidth, gridHeight);
+        isShapeDrawing = false;
         shapeStart = null;
         shapeCurrent = null;
-        isShapeDrawing = false;
         redrawCanvas();
-        setStatus("Raster wurde geleert");
-      }
-
-      function exportPNG() {
-        const link = document.createElement("a");
-        link.download = `pixely-${gridWidth}x${gridHeight}.png`;
-        link.href = canvas.toDataURL("image/png");
-        link.click();
-        setStatus("PNG wurde exportiert");
-      }
-
-      function exportGIF() {
-        const dataUrl = canvas.toDataURL("image/gif");
-        const link = document.createElement("a");
-        link.download = `pixely-${gridWidth}x${gridHeight}.gif`;
-        link.href = dataUrl;
-        link.click();
-        setStatus("GIF wurde exportiert (abhängig vom Browser-Support)");
       }
 
       function saveImage() {
         const data = {
           width: gridWidth,
           height: gridHeight,
-          cells: grid,
+          frames,
         };
-
         const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -721,48 +611,43 @@
         a.download = `pixely-${gridWidth}x${gridHeight}.json`;
         a.click();
         URL.revokeObjectURL(url);
-        setStatus("Bild als JSON gespeichert");
       }
 
       function loadImageFromFile(file) {
         const reader = new FileReader();
-        reader.onload = function (e) {
+        reader.onload = e => {
           try {
             const data = JSON.parse(e.target.result);
-            if (!data || typeof data.width !== "number" || typeof data.height !== "number" || !Array.isArray(data.cells)) {
-              throw new Error("Ungültiges Dateiformat");
+            if (
+              !data ||
+              typeof data.width !== "number" ||
+              typeof data.height !== "number" ||
+              !Array.isArray(data.frames)
+            ) {
+              throw new Error("Format");
             }
             if (
               data.width < MIN_SIZE || data.width > MAX_SIZE ||
               data.height < MIN_SIZE || data.height > MAX_SIZE
             ) {
-              throw new Error(`Rastergröße muss zwischen ${MIN_SIZE} und ${MAX_SIZE} liegen.`);
+              throw new Error("Rasterbereich 5–64");
             }
-
             gridWidth = data.width;
             gridHeight = data.height;
             cellWidth = CANVAS_SIZE / gridWidth;
             cellHeight = CANVAS_SIZE / gridHeight;
-            grid = data.cells;
-
-            const ws = workspaces[currentWorkspaceIndex];
-            ws.width = gridWidth;
-            ws.height = gridHeight;
-            ws.cells = grid;
-
+            frames = data.frames;
+            currentFrameIndex = 0;
             customWidthInput.value = gridWidth;
             customHeightInput.value = gridHeight;
-
-            shapeStart = null;
-            shapeCurrent = null;
-            isShapeDrawing = false;
+            presetSize.value = `${gridWidth}x${gridHeight}` in Object.create(null) ? `${gridWidth}x${gridHeight}` : "8x8";
 
             redrawCanvas();
             updateGridInfo();
-            setStatus(`Bild geladen (${gridWidth} × ${gridHeight})`);
+            updateFrameLabel();
           } catch (err) {
             console.error(err);
-            setStatus("Fehler beim Laden der Datei: " + err.message);
+            setStatus("Fehler beim Laden");
           }
         };
         reader.readAsText(file);
@@ -774,89 +659,63 @@
           (ev.touches && ev.touches[0]) ||
           (ev.changedTouches && ev.changedTouches[0]) ||
           ev;
-
         const clientX = point.clientX;
         const clientY = point.clientY;
+
         const x = Math.floor(((clientX - rect.left) / rect.width) * gridWidth);
         const y = Math.floor(((clientY - rect.top) / rect.height) * gridHeight);
-
-        if (x < 0 || x >= gridWidth || y < 0 || y >= gridHeight) {
-          return null;
-        }
+        if (x < 0 || x >= gridWidth || y < 0 || y >= gridHeight) return null;
         return { x, y };
       }
 
-      function paintCell(x, y) {
+      function paintCellAt(grid, x, y, color) {
         if (x < 0 || x >= gridWidth || y < 0 || y >= gridHeight) return;
-
-        if (currentTool === "brush") {
-          grid[y][x] = currentColor;
-        } else if (currentTool === "eraser") {
-          grid[y][x] = null;
-        } else {
-          return;
-        }
-
-        const color = grid[y][x];
-        ctx.fillStyle = color ? color : "#ffffff";
-        ctx.fillRect(
-          x * cellWidth,
-          y * cellHeight,
-          Math.ceil(cellWidth),
-          Math.ceil(cellHeight)
-        );
-        // optional: die Grid-Linien werden ohnehin danach wieder aufgezeichnet,
-        // deshalb hier keine extra Zellrahmen nötig.
-        drawGridLines();
+        grid[y][x] = color;
       }
 
-      // Zeichenfunktionen mit optionalem Ziel-Grid (für Vorschau)
-      function drawLine(start, end, color, targetGrid = grid) {
-        let x0 = start.x;
-        let y0 = start.y;
-        let x1 = end.x;
-        let y1 = end.y;
-
-        const dx = Math.abs(x1 - x0);
-        const dy = Math.abs(y1 - y0);
-        const sx = x0 < x1 ? 1 : -1;
-        const sy = y0 < y1 ? 1 : -1;
-        let err = dx - dy;
-
-        while (true) {
-          if (x0 >= 0 && x0 < gridWidth && y0 >= 0 && y0 < gridHeight) {
-            targetGrid[y0][x0] = color;
-          }
-          if (x0 === x1 && y0 === y1) break;
-          const e2 = 2 * err;
-          if (e2 > -dy) {
-            err -= dy;
-            x0 += sx;
-          }
-          if (e2 < dx) {
-            err += dx;
-            y0 += sy;
+      function paintBrush(cell) {
+        const grid = getCurrentGrid();
+        const color = currentTool === "eraser" ? null : currentColor;
+        const r = brushSize - 1;
+        for (let dy = -r; dy <= r; dy++) {
+          for (let dx = -r; dx <= r; dx++) {
+            const nx = cell.x + dx;
+            const ny = cell.y + dy;
+            paintCellAt(grid, nx, ny, color);
+            if (mirrorMode) {
+              const mx = gridWidth - 1 - nx;
+              paintCellAt(grid, mx, ny, color);
+            }
           }
         }
+        redrawCanvas();
       }
 
-      function drawRectShape(start, end, color, targetGrid = grid) {
+      function drawRectShape(start, end, color, targetGrid) {
         const x1 = Math.min(start.x, end.x);
         const x2 = Math.max(start.x, end.x);
         const y1 = Math.min(start.y, end.y);
         const y2 = Math.max(start.y, end.y);
 
-        for (let x = x1; x <= x2; x++) {
-          if (y1 >= 0 && y1 < gridHeight) targetGrid[y1][x] = color;
-          if (y2 >= 0 && y2 < gridHeight) targetGrid[y2][x] = color;
-        }
-        for (let y = y1; y <= y2; y++) {
-          if (x1 >= 0 && x1 < gridWidth) targetGrid[y][x1] = color;
-          if (x2 >= 0 && x2 < gridWidth) targetGrid[y][x2] = color;
+        if (fillMode) {
+          for (let y = y1; y <= y2; y++) {
+            for (let x = x1; x <= x2; x++) {
+              paintCellAt(targetGrid, x, y, color);
+            }
+          }
+        } else {
+          for (let x = x1; x <= x2; x++) {
+            paintCellAt(targetGrid, x, y1, color);
+            paintCellAt(targetGrid, x, y2, color);
+          }
+          for (let y = y1; y <= y2; y++) {
+            paintCellAt(targetGrid, x1, y, color);
+            paintCellAt(targetGrid, x2, y, color);
+          }
         }
       }
 
-      function drawCircleShape(start, end, color, targetGrid = grid) {
+      function drawCircleShape(start, end, color, targetGrid) {
         const x1 = Math.min(start.x, end.x);
         const x2 = Math.max(start.x, end.x);
         const y1 = Math.min(start.y, end.y);
@@ -872,79 +731,74 @@
             const dx = (x - cx) / rx;
             const dy = (y - cy) / ry;
             const dist = dx * dx + dy * dy;
-            // nur der Ring (nicht ausgemalt)
-            if (dist <= 1.05 && dist >= 0.7) {
-              if (x >= 0 && x < gridWidth && y >= 0 && y < gridHeight) {
-                targetGrid[y][x] = color;
+            if (fillMode) {
+              if (dist <= 1.0) {
+                paintCellAt(targetGrid, x, y, color);
+              }
+            } else {
+              if (dist <= 1.05 && dist >= 0.7) {
+                paintCellAt(targetGrid, x, y, color);
               }
             }
           }
         }
       }
 
-      function drawTriangleShape(start, end, color, targetGrid = grid) {
-        // Dreieck mit Basis unten, Spitze oben
-        const x1 = Math.min(start.x, end.x);
-        const x2 = Math.max(start.x, end.x);
-        const y1 = Math.min(start.y, end.y);
-        const y2 = Math.max(start.y, end.y);
-
-        const baseLeft = { x: x1, y: y2 };
-        const baseRight = { x: x2, y: y2 };
-        const top = { x: Math.round((x1 + x2) / 2), y: y1 };
-
-        drawLine(baseLeft, baseRight, color, targetGrid);
-        drawLine(baseLeft, top, color, targetGrid);
-        drawLine(baseRight, top, color, targetGrid);
-      }
-
       function applyShape(start, end) {
         if (!start || !end) return;
+        const grid = getCurrentGrid();
         const color = currentColor;
+        const tempGrid = grid;
 
-        switch (currentTool) {
-          case "line":
-            drawLine(start, end, color);
-            break;
-          case "rect":
-            drawRectShape(start, end, color);
-            break;
-          case "circle":
-            drawCircleShape(start, end, color);
-            break;
-          case "triangle":
-            drawTriangleShape(start, end, color);
-            break;
-          default:
-            return;
+        if (currentTool === "rect") {
+          drawRectShape(start, end, color, tempGrid);
+        } else if (currentTool === "circle") {
+          drawCircleShape(start, end, color, tempGrid);
+        }
+
+        if (mirrorMode) {
+          const mirroredGrid = getCurrentGrid();
+          const w = gridWidth;
+          // Spiegeln: wir zeichnen die Form gespiegelt per zweite Runde
+          if (currentTool === "rect") {
+            const ms = { x: w - 1 - start.x, y: start.y };
+            const me = { x: w - 1 - end.x, y: end.y };
+            drawRectShape(ms, me, color, mirroredGrid);
+          } else if (currentTool === "circle") {
+            const ms = { x: w - 1 - start.x, y: start.y };
+            const me = { x: w - 1 - end.x, y: end.y };
+            drawCircleShape(ms, me, color, mirroredGrid);
+          }
         }
 
         redrawCanvas();
       }
 
       function previewShape(start, end) {
-        if (!start || !end) return;
-        const tempGrid = grid.map(row => row.slice());
+        const original = getCurrentGrid();
+        const copy = original.map(row => row.slice());
         const color = currentColor;
 
-        switch (currentTool) {
-          case "line":
-            drawLine(start, end, color, tempGrid);
-            break;
-          case "rect":
-            drawRectShape(start, end, color, tempGrid);
-            break;
-          case "circle":
-            drawCircleShape(start, end, color, tempGrid);
-            break;
-          case "triangle":
-            drawTriangleShape(start, end, color, tempGrid);
-            break;
-          default:
-            return;
+        if (currentTool === "rect") {
+          drawRectShape(start, end, color, copy);
+        } else if (currentTool === "circle") {
+          drawCircleShape(start, end, color, copy);
         }
 
-        drawFromGrid(tempGrid);
+        if (mirrorMode) {
+          const w = gridWidth;
+          if (currentTool === "rect") {
+            const ms = { x: w - 1 - start.x, y: start.y };
+            const me = { x: w - 1 - end.x, y: end.y };
+            drawRectShape(ms, me, color, copy);
+          } else if (currentTool === "circle") {
+            const ms = { x: w - 1 - start.x, y: start.y };
+            const me = { x: w - 1 - end.x, y: end.y };
+            drawCircleShape(ms, me, color, copy);
+          }
+        }
+
+        drawGridToContext(ctx, copy, gridWidth, gridHeight, true);
       }
 
       function handlePointerDown(ev) {
@@ -953,13 +807,12 @@
 
         if (currentTool === "brush" || currentTool === "eraser") {
           isDrawing = true;
-          paintCell(cell.x, cell.y);
+          paintBrush(cell);
         } else {
           isShapeDrawing = true;
           shapeStart = cell;
           shapeCurrent = cell;
           previewShape(shapeStart, shapeCurrent);
-          setStatus("Ziehe mit der Maus, um die Größe festzulegen. Loslassen zum Anwenden.");
         }
       }
 
@@ -968,8 +821,8 @@
         if (!cell) return;
 
         if (isDrawing && (currentTool === "brush" || currentTool === "eraser")) {
-          paintCell(cell.x, cell.y);
-        } else if (isShapeDrawing && shapeStart && (currentTool !== "brush" && currentTool !== "eraser")) {
+          paintBrush(cell);
+        } else if (isShapeDrawing && shapeStart && (currentTool === "rect" || currentTool === "circle")) {
           shapeCurrent = cell;
           previewShape(shapeStart, shapeCurrent);
         }
@@ -984,76 +837,159 @@
           isShapeDrawing = false;
           if (shapeStart && shapeCurrent) {
             applyShape(shapeStart, shapeCurrent);
-            shapeStart = null;
-            shapeCurrent = null;
-            setStatus("Form gezeichnet.");
           } else {
             redrawCanvas();
           }
+          shapeStart = null;
+          shapeCurrent = null;
         }
       }
 
-      // Event-Listener
+      function exportPNG() {
+        const a = document.createElement("a");
+        a.download = `pixely-${gridWidth}x${gridHeight}-frame${currentFrameIndex + 1}.png`;
+        a.href = canvas.toDataURL("image/png");
+        a.click();
+      }
+
+      function exportGIF() {
+        if (typeof GIF === "undefined") {
+          setStatus("gif.js nicht geladen");
+          return;
+        }
+        if (!frames.length) {
+          setStatus("Keine Frames");
+          return;
+        }
+
+        const gif = new GIF({
+          workers: 2,
+          quality: 10,
+          workerScript: "https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js"
+        });
+
+        frames.forEach(gridFrame => {
+          const off = document.createElement("canvas");
+          off.width = CANVAS_SIZE;
+          off.height = CANVAS_SIZE;
+          const offCtx = off.getContext("2d");
+          drawGridToContext(offCtx, gridFrame, gridWidth, gridHeight, false);
+          gif.addFrame(offCtx, { delay: 300 });
+        });
+
+        gif.on("finished", function (blob) {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `pixely-${gridWidth}x${gridHeight}.gif`;
+          a.click();
+          URL.revokeObjectURL(url);
+        });
+
+        gif.render();
+        setStatus("GIF wird erstellt …");
+      }
+
+      function addFrame() {
+        const base = getCurrentGrid();
+        const clone = base.map(row => row.slice());
+        frames.splice(currentFrameIndex + 1, 0, clone);
+        currentFrameIndex++;
+        updateFrameLabel();
+        redrawCanvas();
+      }
+
+      function deleteFrame() {
+        if (frames.length <= 1) {
+          clearCurrentFrame();
+          return;
+        }
+        frames.splice(currentFrameIndex, 1);
+        if (currentFrameIndex >= frames.length) {
+          currentFrameIndex = frames.length - 1;
+        }
+        updateFrameLabel();
+        redrawCanvas();
+      }
+
+      function prevFrame() {
+        currentFrameIndex = (currentFrameIndex - 1 + frames.length) % frames.length;
+        updateFrameLabel();
+        redrawCanvas();
+      }
+
+      function nextFrame() {
+        currentFrameIndex = (currentFrameIndex + 1) % frames.length;
+        updateFrameLabel();
+        redrawCanvas();
+      }
+
+      // Event-Bindings
       presetSize.addEventListener("change", presetChanged);
       applySizeBtn.addEventListener("click", applyCustomSize);
 
-      workspaceSelect.addEventListener("change", (e) => {
-        const index = parseInt(e.target.value, 10);
-        loadWorkspace(index);
-      });
+      prevFrameBtn.addEventListener("click", prevFrame);
+      nextFrameBtn.addEventListener("click", nextFrame);
+      addFrameBtn.addEventListener("click", addFrame);
+      deleteFrameBtn.addEventListener("click", deleteFrame);
 
       brushBtn.addEventListener("click", () => setTool("brush"));
       eraserBtn.addEventListener("click", () => setTool("eraser"));
-      lineBtn.addEventListener("click", () => setTool("line"));
       rectBtn.addEventListener("click", () => setTool("rect"));
       circleBtn.addEventListener("click", () => setTool("circle"));
-      triangleBtn.addEventListener("click", () => setTool("triangle"));
 
-      colorPicker.addEventListener("input", (e) => {
+      fillToggleBtn.addEventListener("click", toggleFill);
+      mirrorToggleBtn.addEventListener("click", toggleMirror);
+
+      colorPicker.addEventListener("input", e => {
         currentColor = e.target.value;
-        if (currentTool !== "eraser") {
-          setStatus(`Farbe geändert: ${currentColor}`);
-        }
       });
 
-      clearBtn.addEventListener("click", clearCanvas);
-
-      exportPngBtn.addEventListener("click", exportPNG);
-      exportGifBtn.addEventListener("click", exportGIF);
+      brushSizeInput.addEventListener("input", e => {
+        brushSize = parseInt(e.target.value, 10) || 1;
+        brushSizeLabel.textContent = brushSize;
+      });
 
       saveBtn.addEventListener("click", saveImage);
       loadBtn.addEventListener("click", () => loadInput.click());
-      loadInput.addEventListener("change", (e) => {
+      loadInput.addEventListener("change", e => {
         const file = e.target.files && e.target.files[0];
         if (!file) return;
         loadImageFromFile(file);
         loadInput.value = "";
       });
 
+      clearBtn.addEventListener("click", clearCurrentFrame);
+
+      exportPngBtn.addEventListener("click", exportPNG);
+      exportGifBtn.addEventListener("click", exportGIF);
+
       canvas.addEventListener("mousedown", handlePointerDown);
       canvas.addEventListener("mousemove", handlePointerMove);
       window.addEventListener("mouseup", handlePointerUp);
 
-      canvas.addEventListener("touchstart", function (e) {
+      canvas.addEventListener("touchstart", e => {
         e.preventDefault();
         handlePointerDown(e);
       }, { passive: false });
 
-      canvas.addEventListener("touchmove", function (e) {
+      canvas.addEventListener("touchmove", e => {
         e.preventDefault();
         handlePointerMove(e);
       }, { passive: false });
 
-      canvas.addEventListener("touchend", function (e) {
+      canvas.addEventListener("touchend", e => {
         e.preventDefault();
         handlePointerUp();
       }, { passive: false });
 
-      // Initialisierung
+      // Init
+      initFrames();
       redrawCanvas();
       updateGridInfo();
+      updateFrameLabel();
       setTool("brush");
-      setStatus("Bereit – Raster auswählen und loszeichnen.");
+      brushSize = parseInt(brushSizeInput.value, 10) || 1;
     })();
   </script>
 </body>
