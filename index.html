@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <title>Pixel Studio – Rastergrafik Editor</title>
+  <title>Pixely – Rastergrafik Editor</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root {
@@ -80,7 +80,7 @@
 
     main {
       display: grid;
-      grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+      grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
       gap: 0;
       min-height: 480px;
       max-height: 80vh;
@@ -322,9 +322,9 @@
       <div>
         <h1>
           <span class="logo-dot"></span>
-          Pixel Studio
+          Pixely
         </h1>
-        <div class="subtitle">Rastergrafiken von 5×5 bis 64×64 – direkt im Browser zeichnen</div>
+        <div class="subtitle">Rastergrafiken von 5×5 bis 64×64 – ideal für den Unterricht</div>
       </div>
       <div class="header-actions">
         <button id="exportPngBtn" class="btn btn-primary" type="button">
@@ -365,6 +365,22 @@
         </div>
 
         <div class="control-group">
+          <div class="section-title">Arbeitsflächen</div>
+          <div class="control-row">
+            <label for="workspaceSelect">Aktive Fläche:</label>
+            <select id="workspaceSelect">
+              <option value="0">Arbeitsfläche 1</option>
+              <option value="1">Arbeitsfläche 2</option>
+              <option value="2">Arbeitsfläche 3</option>
+              <option value="3">Arbeitsfläche 4</option>
+            </select>
+          </div>
+          <div class="hint">
+            Nutze mehrere Arbeitsflächen für verschiedene Gruppen oder Schüler*innen auf einem Gerät.
+          </div>
+        </div>
+
+        <div class="control-group">
           <div class="section-title">Werkzeuge</div>
           <div class="control-row" style="margin-bottom: 0.4rem;">
             <label>Farbe:</label>
@@ -391,8 +407,8 @@
             </button>
           </div>
           <div class="hint">
-            Formen: erstes Klick setzt den Startpunkt, zweites Klick den Endpunkt.<br>
-            Stift/Radierer: Ziehen bei gedrückter Maustaste.
+            Formen: Maustaste drücken, ziehen, loslassen – Größe wird mit der Maus angepasst. <br>
+            Innenflächen bleiben weiß (nur Umrisse).
           </div>
         </div>
 
@@ -442,6 +458,8 @@
       const customHeightInput = document.getElementById("customHeight");
       const applySizeBtn = document.getElementById("applySizeBtn");
 
+      const workspaceSelect = document.getElementById("workspaceSelect");
+
       const colorPicker = document.getElementById("colorPicker");
       const brushBtn = document.getElementById("brushBtn");
       const eraserBtn = document.getElementById("eraserBtn");
@@ -473,10 +491,13 @@
       let cellWidth = CANVAS_SIZE / gridWidth;
       let cellHeight = CANVAS_SIZE / gridHeight;
       let grid = [];
+
       let currentTool = "brush"; // "brush" | "eraser" | "line" | "rect" | "circle" | "triangle"
       let currentColor = colorPicker.value;
       let isDrawing = false;
-      let shapeStart = null; // {x, y} für Formen
+      let isShapeDrawing = false;
+      let shapeStart = null;
+      let shapeCurrent = null;
 
       const toolButtons = {
         brush: brushBtn,
@@ -487,9 +508,24 @@
         triangle: triangleBtn,
       };
 
+      const NUM_WORKSPACES = workspaceSelect.options.length;
+      const workspaces = [];
+      
       function createEmptyGrid(width, height) {
         return Array.from({ length: height }, () => Array(width).fill(null));
       }
+
+      // Arbeitsflächen initialisieren
+      for (let i = 0; i < NUM_WORKSPACES; i++) {
+        workspaces.push({
+          name: workspaceSelect.options[i].textContent,
+          width: gridWidth,
+          height: gridHeight,
+          cells: createEmptyGrid(gridWidth, gridHeight),
+        });
+      }
+      let currentWorkspaceIndex = 0;
+      grid = workspaces[0].cells;
 
       function setStatus(message) {
         statusText.textContent = message;
@@ -503,37 +539,35 @@
 
       function drawGridLines() {
         ctx.save();
-        ctx.strokeStyle = "#e5e7eb";
-        ctx.lineWidth = 1;
-        ctx.setLineDash([2, 2]);
-        ctx.globalAlpha = 0.15;
+        ctx.strokeStyle = "#d1d5db";
+        ctx.lineWidth = 2; // etwas breitere Linien
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 0.7;
 
-        if (gridWidth <= 64 && gridHeight <= 64) {
-          for (let x = 0; x <= gridWidth; x++) {
-            const px = x * cellWidth + 0.5;
-            ctx.beginPath();
-            ctx.moveTo(px, 0);
-            ctx.lineTo(px, CANVAS_SIZE);
-            ctx.stroke();
-          }
-          for (let y = 0; y <= gridHeight; y++) {
-            const py = y * cellHeight + 0.5;
-            ctx.beginPath();
-            ctx.moveTo(0, py);
-            ctx.lineTo(CANVAS_SIZE, py);
-            ctx.stroke();
-          }
+        for (let x = 0; x <= gridWidth; x++) {
+          const px = x * cellWidth + 0.5;
+          ctx.beginPath();
+          ctx.moveTo(px, 0);
+          ctx.lineTo(px, CANVAS_SIZE);
+          ctx.stroke();
+        }
+        for (let y = 0; y <= gridHeight; y++) {
+          const py = y * cellHeight + 0.5;
+          ctx.beginPath();
+          ctx.moveTo(0, py);
+          ctx.lineTo(CANVAS_SIZE, py);
+          ctx.stroke();
         }
         ctx.restore();
       }
 
-      function redrawCanvas() {
+      function drawFromGrid(dataGrid) {
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
         for (let y = 0; y < gridHeight; y++) {
           for (let x = 0; x < gridWidth; x++) {
-            const color = grid[y][x];
+            const color = dataGrid[y][x];
             if (color) {
               ctx.fillStyle = color;
               ctx.fillRect(
@@ -549,6 +583,10 @@
         drawGridLines();
       }
 
+      function redrawCanvas() {
+        drawFromGrid(grid);
+      }
+
       function resizeGrid(newWidth, newHeight) {
         newWidth = Math.max(MIN_SIZE, Math.min(MAX_SIZE, newWidth));
         newHeight = Math.max(MIN_SIZE, Math.min(MAX_SIZE, newHeight));
@@ -558,7 +596,15 @@
         cellWidth = CANVAS_SIZE / gridWidth;
         cellHeight = CANVAS_SIZE / gridHeight;
         grid = createEmptyGrid(gridWidth, gridHeight);
+
+        const ws = workspaces[currentWorkspaceIndex];
+        ws.width = gridWidth;
+        ws.height = gridHeight;
+        ws.cells = grid;
+
         shapeStart = null;
+        shapeCurrent = null;
+        isShapeDrawing = false;
 
         redrawCanvas();
         updateGridInfo();
@@ -590,9 +636,33 @@
         resizeGrid(w, h);
       }
 
+      function loadWorkspace(index) {
+        if (index === currentWorkspaceIndex) return;
+        currentWorkspaceIndex = index;
+        const ws = workspaces[index];
+        gridWidth = ws.width;
+        gridHeight = ws.height;
+        cellWidth = CANVAS_SIZE / gridWidth;
+        cellHeight = CANVAS_SIZE / gridHeight;
+        grid = ws.cells;
+
+        customWidthInput.value = gridWidth;
+        customHeightInput.value = gridHeight;
+
+        shapeStart = null;
+        shapeCurrent = null;
+        isShapeDrawing = false;
+
+        redrawCanvas();
+        updateGridInfo();
+        setStatus(`Wechsel zu ${ws.name}`);
+      }
+
       function setTool(tool) {
         currentTool = tool;
         shapeStart = null;
+        shapeCurrent = null;
+        isShapeDrawing = false;
 
         Object.values(toolButtons).forEach(btn => btn.classList.remove("active"));
         if (toolButtons[tool]) {
@@ -602,34 +672,36 @@
         const labelMap = {
           brush: "Stift aktiviert",
           eraser: "Radierer aktiviert",
-          line: "Linienwerkzeug: Start- und Endpunkt per Klick wählen.",
-          rect: "Rechteckwerkzeug: zwei Ecken per Klick wählen.",
-          circle: "Kreiswerkzeug: Rahmen per zwei Klicks bestimmen.",
-          triangle: "Dreieckwerkzeug: Basis per Klick wählen, zweite Ecke bestimmt die Spitze.",
+          line: "Linienwerkzeug: mit der Maus ziehen, um die Länge zu bestimmen.",
+          rect: "Rechteckwerkzeug: mit der Maus ziehen, um die Größe anzupassen.",
+          circle: "Kreiswerkzeug: ziehe für Größe und Position.",
+          triangle: "Dreieckwerkzeug: ziehe für Basis und Höhe.",
         };
         setStatus(labelMap[tool] || "Werkzeug geändert");
       }
 
       function clearCanvas() {
         grid = createEmptyGrid(gridWidth, gridHeight);
+        workspaces[currentWorkspaceIndex].cells = grid;
         shapeStart = null;
+        shapeCurrent = null;
+        isShapeDrawing = false;
         redrawCanvas();
         setStatus("Raster wurde geleert");
       }
 
       function exportPNG() {
         const link = document.createElement("a");
-        link.download = `pixel-art-${gridWidth}x${gridHeight}.png`;
+        link.download = `pixely-${gridWidth}x${gridHeight}.png`;
         link.href = canvas.toDataURL("image/png");
         link.click();
         setStatus("PNG wurde exportiert");
       }
 
       function exportGIF() {
-        // Hinweis: Unterstützung von image/gif hängt vom Browser ab.
         const dataUrl = canvas.toDataURL("image/gif");
         const link = document.createElement("a");
-        link.download = `pixel-art-${gridWidth}x${gridHeight}.gif`;
+        link.download = `pixely-${gridWidth}x${gridHeight}.gif`;
         link.href = dataUrl;
         link.click();
         setStatus("GIF wurde exportiert (abhängig vom Browser-Support)");
@@ -646,7 +718,7 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `pixel-art-${gridWidth}x${gridHeight}.json`;
+        a.download = `pixely-${gridWidth}x${gridHeight}.json`;
         a.click();
         URL.revokeObjectURL(url);
         setStatus("Bild als JSON gespeichert");
@@ -672,10 +744,18 @@
             cellWidth = CANVAS_SIZE / gridWidth;
             cellHeight = CANVAS_SIZE / gridHeight;
             grid = data.cells;
-            shapeStart = null;
+
+            const ws = workspaces[currentWorkspaceIndex];
+            ws.width = gridWidth;
+            ws.height = gridHeight;
+            ws.cells = grid;
 
             customWidthInput.value = gridWidth;
             customHeightInput.value = gridHeight;
+
+            shapeStart = null;
+            shapeCurrent = null;
+            isShapeDrawing = false;
 
             redrawCanvas();
             updateGridInfo();
@@ -725,23 +805,13 @@
           Math.ceil(cellWidth),
           Math.ceil(cellHeight)
         );
-
-        if (gridWidth <= 64 && gridHeight <= 64) {
-          ctx.save();
-          ctx.strokeStyle = "rgba(0,0,0,0.06)";
-          ctx.lineWidth = 1;
-          ctx.strokeRect(
-            x * cellWidth + 0.5,
-            y * cellHeight + 0.5,
-            Math.ceil(cellWidth),
-            Math.ceil(cellHeight)
-          );
-          ctx.restore();
-        }
+        // optional: die Grid-Linien werden ohnehin danach wieder aufgezeichnet,
+        // deshalb hier keine extra Zellrahmen nötig.
+        drawGridLines();
       }
 
-      // Bresenham-Linie im Raster
-      function drawLine(start, end, color) {
+      // Zeichenfunktionen mit optionalem Ziel-Grid (für Vorschau)
+      function drawLine(start, end, color, targetGrid = grid) {
         let x0 = start.x;
         let y0 = start.y;
         let x1 = end.x;
@@ -755,7 +825,7 @@
 
         while (true) {
           if (x0 >= 0 && x0 < gridWidth && y0 >= 0 && y0 < gridHeight) {
-            grid[y0][x0] = color;
+            targetGrid[y0][x0] = color;
           }
           if (x0 === x1 && y0 === y1) break;
           const e2 = 2 * err;
@@ -770,23 +840,23 @@
         }
       }
 
-      function drawRectShape(start, end, color) {
+      function drawRectShape(start, end, color, targetGrid = grid) {
         const x1 = Math.min(start.x, end.x);
         const x2 = Math.max(start.x, end.x);
         const y1 = Math.min(start.y, end.y);
         const y2 = Math.max(start.y, end.y);
 
         for (let x = x1; x <= x2; x++) {
-          if (y1 >= 0 && y1 < gridHeight) grid[y1][x] = color;
-          if (y2 >= 0 && y2 < gridHeight) grid[y2][x] = color;
+          if (y1 >= 0 && y1 < gridHeight) targetGrid[y1][x] = color;
+          if (y2 >= 0 && y2 < gridHeight) targetGrid[y2][x] = color;
         }
         for (let y = y1; y <= y2; y++) {
-          if (x1 >= 0 && x1 < gridWidth) grid[y][x1] = color;
-          if (x2 >= 0 && x2 < gridWidth) grid[y][x2] = color;
+          if (x1 >= 0 && x1 < gridWidth) targetGrid[y][x1] = color;
+          if (x2 >= 0 && x2 < gridWidth) targetGrid[y][x2] = color;
         }
       }
 
-      function drawCircleShape(start, end, color) {
+      function drawCircleShape(start, end, color, targetGrid = grid) {
         const x1 = Math.min(start.x, end.x);
         const x2 = Math.max(start.x, end.x);
         const y1 = Math.min(start.y, end.y);
@@ -802,17 +872,18 @@
             const dx = (x - cx) / rx;
             const dy = (y - cy) / ry;
             const dist = dx * dx + dy * dy;
-            if (dist <= 1.1 && dist >= 0.6) {
+            // nur der Ring (nicht ausgemalt)
+            if (dist <= 1.05 && dist >= 0.7) {
               if (x >= 0 && x < gridWidth && y >= 0 && y < gridHeight) {
-                grid[y][x] = color;
+                targetGrid[y][x] = color;
               }
             }
           }
         }
       }
 
-      function drawTriangleShape(start, end, color) {
-        // Einfaches Dreieck: Basis unten, Spitze oben
+      function drawTriangleShape(start, end, color, targetGrid = grid) {
+        // Dreieck mit Basis unten, Spitze oben
         const x1 = Math.min(start.x, end.x);
         const x2 = Math.max(start.x, end.x);
         const y1 = Math.min(start.y, end.y);
@@ -822,9 +893,9 @@
         const baseRight = { x: x2, y: y2 };
         const top = { x: Math.round((x1 + x2) / 2), y: y1 };
 
-        drawLine(baseLeft, baseRight, color);
-        drawLine(baseLeft, top, color);
-        drawLine(baseRight, top, color);
+        drawLine(baseLeft, baseRight, color, targetGrid);
+        drawLine(baseLeft, top, color, targetGrid);
+        drawLine(baseRight, top, color, targetGrid);
       }
 
       function applyShape(start, end) {
@@ -851,43 +922,85 @@
         redrawCanvas();
       }
 
+      function previewShape(start, end) {
+        if (!start || !end) return;
+        const tempGrid = grid.map(row => row.slice());
+        const color = currentColor;
+
+        switch (currentTool) {
+          case "line":
+            drawLine(start, end, color, tempGrid);
+            break;
+          case "rect":
+            drawRectShape(start, end, color, tempGrid);
+            break;
+          case "circle":
+            drawCircleShape(start, end, color, tempGrid);
+            break;
+          case "triangle":
+            drawTriangleShape(start, end, color, tempGrid);
+            break;
+          default:
+            return;
+        }
+
+        drawFromGrid(tempGrid);
+      }
+
       function handlePointerDown(ev) {
         const cell = getCellFromEvent(ev);
         if (!cell) return;
 
         if (currentTool === "brush" || currentTool === "eraser") {
           isDrawing = true;
-          shapeStart = null;
           paintCell(cell.x, cell.y);
         } else {
-          // Formen: erster Klick = Start, zweiter Klick = Ende + Zeichnen
-          if (!shapeStart) {
-            shapeStart = cell;
-            setStatus("Startpunkt gesetzt – wähle einen zweiten Punkt.");
-          } else {
-            const endCell = cell;
-            applyShape(shapeStart, endCell);
-            shapeStart = null;
-            setStatus("Form gezeichnet.");
-          }
+          isShapeDrawing = true;
+          shapeStart = cell;
+          shapeCurrent = cell;
+          previewShape(shapeStart, shapeCurrent);
+          setStatus("Ziehe mit der Maus, um die Größe festzulegen. Loslassen zum Anwenden.");
         }
       }
 
       function handlePointerMove(ev) {
-        if (!isDrawing) return;
-        if (!(currentTool === "brush" || currentTool === "eraser")) return;
         const cell = getCellFromEvent(ev);
         if (!cell) return;
-        paintCell(cell.x, cell.y);
+
+        if (isDrawing && (currentTool === "brush" || currentTool === "eraser")) {
+          paintCell(cell.x, cell.y);
+        } else if (isShapeDrawing && shapeStart && (currentTool !== "brush" && currentTool !== "eraser")) {
+          shapeCurrent = cell;
+          previewShape(shapeStart, shapeCurrent);
+        }
       }
 
       function handlePointerUp() {
-        isDrawing = false;
+        if (isDrawing) {
+          isDrawing = false;
+          return;
+        }
+        if (isShapeDrawing) {
+          isShapeDrawing = false;
+          if (shapeStart && shapeCurrent) {
+            applyShape(shapeStart, shapeCurrent);
+            shapeStart = null;
+            shapeCurrent = null;
+            setStatus("Form gezeichnet.");
+          } else {
+            redrawCanvas();
+          }
+        }
       }
 
       // Event-Listener
       presetSize.addEventListener("change", presetChanged);
       applySizeBtn.addEventListener("click", applyCustomSize);
+
+      workspaceSelect.addEventListener("change", (e) => {
+        const index = parseInt(e.target.value, 10);
+        loadWorkspace(index);
+      });
 
       brushBtn.addEventListener("click", () => setTool("brush"));
       eraserBtn.addEventListener("click", () => setTool("eraser"));
@@ -898,7 +1011,7 @@
 
       colorPicker.addEventListener("input", (e) => {
         currentColor = e.target.value;
-        if (currentTool === "brush" || currentTool === "line" || currentTool === "rect" || currentTool === "circle" || currentTool === "triangle") {
+        if (currentTool !== "eraser") {
           setStatus(`Farbe geändert: ${currentColor}`);
         }
       });
@@ -937,7 +1050,6 @@
       }, { passive: false });
 
       // Initialisierung
-      grid = createEmptyGrid(gridWidth, gridHeight);
       redrawCanvas();
       updateGridInfo();
       setTool("brush");
