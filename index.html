@@ -4,8 +4,7 @@
   <meta charset="UTF-8" />
   <title>Pixely – Pixel-Editor</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- GIF.js für animierte GIF-Erstellung -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
+  <!-- GIF-Export erfolgt clientseitig ohne externe Abhängigkeiten -->
   <style>
     :root {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -14,6 +13,7 @@
       --accent: #38bdf8;
       --accent-soft: rgba(56, 189, 248, 0.15);
       --border: #1f2937;
+      --frame-thumb: 86px;
     }
     * { box-sizing: border-box; }
 
@@ -73,7 +73,7 @@
     main {
       flex: 1;
       display: grid;
-      grid-template-columns: 180px minmax(0, 1fr) 260px;
+      grid-template-columns: auto minmax(0, 1fr) 260px;
       min-height: 440px;
       max-height: 80vh;
     }
@@ -158,6 +158,8 @@
       display: flex;
       flex-direction: column;
       gap: 0.6rem;
+      width: calc(var(--frame-thumb) + 1.8rem);
+      min-width: calc(var(--frame-thumb) + 1.8rem);
     }
 
     .frames-header-title {
@@ -175,36 +177,48 @@
       display: flex;
       flex-direction: column;
       gap: 0.45rem;
+      align-items: center;
     }
 
     .frame-item {
       position: relative;
       display: flex;
       align-items: center;
-      gap: 0.4rem;
-      padding: 0.35rem;
+      gap: 0.25rem;
+      padding: 0.2rem;
       border-radius: 0.6rem;
       border: 1px solid #111827;
       background: #020617;
       cursor: pointer;
       transition: background 0.1s ease, border-color 0.1s ease;
+      align-self: center;
+    }
+    .frame-item.dragging {
+      opacity: 0.5;
+      cursor: grabbing;
+    }
+    .frame-item.drag-over {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent-soft);
     }
     .frame-item.active {
       border-color: var(--accent);
       box-shadow: 0 0 0 1px var(--accent-soft);
       background: #030712;
     }
-    .frame-thumb {
-      width: 64px;
-      height: 64px;
-      border-radius: 0.4rem;
-      background: #111827;
-      border: 1px solid #111827;
+    .frame-thumb-wrap {
+      position: relative;
+      width: var(--frame-thumb);
+      height: var(--frame-thumb);
       flex-shrink: 0;
     }
-    .frame-label {
-      font-size: 0.8rem;
-      color: #e5e7eb;
+    .frame-thumb {
+      width: 100%;
+      height: 100%;
+      border-radius: 0.45rem;
+      background: #111827;
+      border: 1px solid #0b1221;
+      display: block;
     }
 
     .frame-index-badge {
@@ -228,31 +242,42 @@
 
     .frame-actions {
       position: absolute;
-      bottom: 4px;
-      left: 4px;
-      right: 4px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      inset: 4px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
       pointer-events: none;
+      opacity: 0;
+      transform: translateY(2px);
+      transition: opacity 0.14s ease, transform 0.14s ease;
+    }
+    .frame-item:hover .frame-actions,
+    .frame-item.show-actions .frame-actions {
+      opacity: 1;
+      transform: translateY(0);
     }
     .frame-actions button {
       pointer-events: auto;
-      border-radius: 999px;
-      border: 1px solid #111827;
-      background: rgba(15, 23, 42, 0.9);
-      width: 22px;
-      height: 22px;
-      display: flex;
+      border-radius: 0.65rem;
+      border: 1px solid #0b1221;
+      background: rgba(15, 23, 42, 0.94);
+      width: 28px;
+      height: 28px;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
       padding: 0;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
     }
     .frame-actions svg {
-      width: 13px;
-      height: 13px;
-      stroke-width: 1.7;
+      width: 15px;
+      height: 15px;
+      stroke-width: 1.6;
     }
+    .frame-actions .top-left { justify-self: start; align-self: start; }
+    .frame-actions .top-right { justify-self: end; align-self: start; }
+    .frame-actions .bottom-left { justify-self: start; align-self: end; }
+    .frame-actions .bottom-right { justify-self: end; align-self: end; }
 
     .new-frame-btn {
       margin-top: 0.4rem;
@@ -266,6 +291,7 @@
       align-items: center;
       gap: 0.35rem;
       cursor: pointer;
+      align-self: stretch;
     }
     .new-frame-btn:hover {
       background: rgba(15, 23, 42, 0.8);
@@ -352,6 +378,32 @@
       display: flex;
       flex-direction: column;
       gap: 0.35rem;
+    }
+
+    .preview-card {
+      border: 1px solid #111827;
+      border-radius: 0.6rem;
+      padding: 0.6rem;
+      background: #030712;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+    }
+
+    .preview-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    #gifPreviewCanvas {
+      width: 100%;
+      max-width: 220px;
+      aspect-ratio: 1 / 1;
+      border-radius: 0.5rem;
+      background: #0b1221;
+      border: 1px dashed #1f2937;
     }
 
     .row {
@@ -605,6 +657,23 @@
             <input id="loadInput" type="file" accept="application/json" style="display:none" />
           </div>
         </div>
+
+        <!-- GIF Vorschau -->
+        <div class="section">
+          <div class="section-title">GIF &amp; Vorschau</div>
+          <div class="preview-card">
+            <div class="preview-controls">
+              <label for="gifFpsInput">FPS</label>
+              <input id="gifFpsInput" type="range" min="1" max="24" value="5" />
+              <span id="gifFpsValue" class="pill">5 FPS</span>
+            </div>
+            <canvas id="gifPreviewCanvas" width="200" height="200"></canvas>
+            <div class="preview-controls">
+              <button id="togglePreviewBtn" class="btn">Vorschau abspielen</button>
+              <button id="restartPreviewBtn" class="btn btn-ghost">Neu starten</button>
+            </div>
+          </div>
+        </div>
       </aside>
     </main>
   </div>
@@ -638,8 +707,17 @@
       const clearBtn = document.getElementById("clearBtn");
       const exportPngBtn = document.getElementById("exportPngBtn");
       const exportGifBtn = document.getElementById("exportGifBtn");
+      const gifPreviewCanvas = document.getElementById("gifPreviewCanvas");
+      const gifPreviewCtx = gifPreviewCanvas.getContext("2d");
+      const gifFpsInput = document.getElementById("gifFpsInput");
+      const gifFpsValue = document.getElementById("gifFpsValue");
+      const togglePreviewBtn = document.getElementById("togglePreviewBtn");
+      const restartPreviewBtn = document.getElementById("restartPreviewBtn");
 
       const brushSizeButtons = Array.from(document.querySelectorAll(".brush-size-btn"));
+
+      const frameThumbSize =
+        parseInt(getComputedStyle(document.documentElement).getPropertyValue("--frame-thumb"), 10) || 86;
 
       const CANVAS_SIZE = 1024;
       canvas.width = CANVAS_SIZE;
@@ -667,6 +745,14 @@
       let shapeStart = null;
       let shapeCurrent = null;
 
+      let previewTimer = null;
+      let previewIndex = 0;
+      let previewPlaying = false;
+      let dragIndex = null;
+      let flashActionsIndex = null;
+      let flashActionsTimeout = null;
+      let gifExporting = false;
+
       const toolButtons = {
         pinsel: brushBtn,
         radierer: eraserBtn,
@@ -677,6 +763,262 @@
 
       function setStatus(msg) {
         statusText.textContent = msg;
+      }
+
+      function flashFrameActions(index) {
+        flashActionsIndex = index;
+        if (flashActionsTimeout) {
+          clearTimeout(flashActionsTimeout);
+          flashActionsTimeout = null;
+        }
+      }
+
+      function getGifDelayMs() {
+        const fps = Math.max(1, Math.min(24, parseInt(gifFpsInput.value, 10) || 5));
+        gifFpsInput.value = fps;
+        return Math.round(1000 / fps);
+      }
+
+      function updateFpsLabel() {
+        gifFpsValue.textContent = `${gifFpsInput.value} FPS`;
+      }
+
+      function quantizeChannel(v) {
+        // 6 Stufen pro Kanal -> maximal 216 Farben + Transparenz
+        return Math.round(v / 51) * 51;
+      }
+
+      function buildPaletteAndFrames(pixelsPerFrame, exportSize) {
+        const palette = [[0, 0, 0]]; // Index 0 = transparent
+        const colorToIndex = new Map();
+        let needsTransparency = false;
+
+        const indexedFrames = pixelsPerFrame.map(data => {
+          const idxFrame = new Uint8Array(exportSize * exportSize);
+          for (let i = 0, p = 0; i < data.length; i += 4, p++) {
+            const a = data[i + 3];
+            if (a < 8) {
+              idxFrame[p] = 0;
+              needsTransparency = true;
+              continue;
+            }
+
+            const r = quantizeChannel(data[i]);
+            const g = quantizeChannel(data[i + 1]);
+            const b = quantizeChannel(data[i + 2]);
+            const key = `${r},${g},${b}`;
+            let idx = colorToIndex.get(key);
+            if (idx === undefined) {
+              palette.push([r, g, b]);
+              idx = palette.length - 1;
+              colorToIndex.set(key, idx);
+              if (palette.length > 256) {
+                throw new Error("Zu viele Farben für GIF-Palette (max. 255 + Transparenz).");
+              }
+            }
+            idxFrame[p] = idx;
+          }
+          return idxFrame;
+        });
+
+        // Palette Größe auf Potenz von 2 auffüllen (mindestens 2 Farben)
+        let paletteSize = 1;
+        while (paletteSize < palette.length) paletteSize <<= 1;
+        paletteSize = Math.max(2, paletteSize);
+        while (palette.length < paletteSize) palette.push([0, 0, 0]);
+
+        return { palette, indexedFrames, transparentIndex: needsTransparency ? 0 : null };
+      }
+
+      function lzwEncode(minCodeSize, indexStream) {
+        const clearCode = 1 << minCodeSize;
+        const endCode = clearCode + 1;
+        let nextCode = endCode + 1;
+        let codeSize = minCodeSize + 1;
+        const dict = new Map();
+        for (let i = 0; i < clearCode; i++) {
+          dict.set(String.fromCharCode(i), i);
+        }
+
+        const output = [];
+        let bitBuffer = 0;
+        let bitLength = 0;
+
+        function writeCode(code) {
+          bitBuffer |= code << bitLength;
+          bitLength += codeSize;
+          while (bitLength >= 8) {
+            output.push(bitBuffer & 0xff);
+            bitBuffer >>= 8;
+            bitLength -= 8;
+          }
+        }
+
+        writeCode(clearCode);
+        let prefix = String.fromCharCode(indexStream[0]);
+
+        for (let i = 1; i < indexStream.length; i++) {
+          const char = String.fromCharCode(indexStream[i]);
+          const combined = prefix + char;
+          if (dict.has(combined)) {
+            prefix = combined;
+          } else {
+            writeCode(dict.get(prefix));
+            dict.set(combined, nextCode++);
+            prefix = char;
+            if (nextCode === 1 << codeSize && codeSize < 12) {
+              codeSize++;
+            }
+          }
+          if (nextCode >= 4095) {
+            writeCode(clearCode);
+            dict.clear();
+            for (let k = 0; k < clearCode; k++) {
+              dict.set(String.fromCharCode(k), k);
+            }
+            nextCode = endCode + 1;
+            codeSize = minCodeSize + 1;
+            prefix = char;
+            continue;
+          }
+        }
+
+        if (!dict.has(prefix)) {
+          prefix = prefix.slice(-1);
+        }
+        writeCode(dict.get(prefix));
+        writeCode(endCode);
+
+        if (bitLength > 0) {
+          output.push(bitBuffer & 0xff);
+        }
+
+        return output;
+      }
+
+      function encodeGif(frames, palette, width, height, delayCs, transparentIndex) {
+        const bitsPerPixel = Math.max(2, Math.ceil(Math.log2(Math.max(2, palette.length))));
+        const tableSize = 1 << bitsPerPixel;
+        const paddedPalette = palette.slice();
+        while (paddedPalette.length < tableSize) {
+          paddedPalette.push(paddedPalette[paddedPalette.length - 1]);
+        }
+
+        const bytes = [];
+        const pushStr = str => {
+          for (let i = 0; i < str.length; i++) bytes.push(str.charCodeAt(i));
+        };
+        const pushByte = b => bytes.push(b & 0xff);
+        const pushWord = w => {
+          bytes.push(w & 0xff, (w >> 8) & 0xff);
+        };
+
+        pushStr("GIF89a");
+        pushWord(width);
+        pushWord(height);
+
+        const gctSize = bitsPerPixel - 1; // pow2 -1
+        const gctFlag = 0x80;
+        const colorResolution = gctSize << 4;
+        const sortFlag = 0x00;
+        const packed = gctFlag | colorResolution | sortFlag | gctSize;
+        pushByte(packed);
+        pushByte(transparentIndex ?? 0);
+        pushByte(0);
+
+        paddedPalette.forEach(([r, g, b]) => {
+          bytes.push(r, g, b);
+        });
+
+        // Loop forever
+        pushByte(0x21);
+        pushByte(0xff);
+        pushByte(11);
+        pushStr("NETSCAPE2.0");
+        pushByte(3);
+        pushByte(1);
+        pushWord(0);
+        pushByte(0);
+
+        frames.forEach(frame => {
+          pushByte(0x21);
+          pushByte(0xf9);
+          pushByte(4);
+          const hasTransparency = transparentIndex !== null;
+          const disposal = hasTransparency ? 0x04 : 0x00; // restore background to avoid carryover
+          const transpFlag = hasTransparency ? 0x01 : 0x00;
+          pushByte(disposal | transpFlag);
+          pushWord(delayCs);
+          pushByte(transparentIndex ?? 0);
+          pushByte(0);
+
+          pushByte(0x2c);
+          pushWord(0);
+          pushWord(0);
+          pushWord(width);
+          pushWord(height);
+          pushByte(0);
+
+          const minCodeSize = Math.max(2, Math.min(12, bitsPerPixel));
+          pushByte(minCodeSize);
+          const lzwData = lzwEncode(minCodeSize, frame);
+          let offset = 0;
+          while (offset < lzwData.length) {
+            const blockSize = Math.min(255, lzwData.length - offset);
+            pushByte(blockSize);
+            for (let i = 0; i < blockSize; i++) {
+              pushByte(lzwData[offset + i]);
+            }
+            offset += blockSize;
+          }
+          pushByte(0);
+        });
+
+        pushByte(0x3b);
+        return new Blob([new Uint8Array(bytes)], { type: "image/gif" });
+      }
+
+      function renderPreviewFrame(idx) {
+        if (!frames.length) return;
+        previewIndex = Math.max(0, Math.min(idx, frames.length - 1));
+        gifPreviewCtx.clearRect(0, 0, gifPreviewCanvas.width, gifPreviewCanvas.height);
+        drawGridToContext(
+          gifPreviewCtx,
+          frames[previewIndex],
+          gridWidth,
+          gridHeight,
+          false,
+          gifPreviewCanvas.width
+        );
+      }
+
+      function stopPreview() {
+        if (previewTimer) {
+          clearInterval(previewTimer);
+          previewTimer = null;
+        }
+        previewPlaying = false;
+        togglePreviewBtn.textContent = "Vorschau abspielen";
+      }
+
+      function startPreview() {
+        if (!frames.length) return;
+        stopPreview();
+        previewPlaying = true;
+        togglePreviewBtn.textContent = "Vorschau stoppen";
+        const delay = getGifDelayMs();
+        previewIndex = 0;
+        renderPreviewFrame(previewIndex);
+        previewTimer = setInterval(() => {
+          previewIndex = (previewIndex + 1) % frames.length;
+          renderPreviewFrame(previewIndex);
+        }, delay);
+      }
+
+      function refreshPreview() {
+        if (!previewPlaying) {
+          renderPreviewFrame(currentFrameIndex);
+        }
       }
 
       function createEmptyGrid(width, height) {
@@ -699,9 +1041,9 @@
         gridInfo.textContent = `${gridWidth}×${gridHeight} | Frame ${currentFrameIndex + 1}/${frames.length}`;
       }
 
-      function drawGridToContext(ctxTarget, dataGrid, width, height, withLines) {
-        const cw = CANVAS_SIZE / width;
-        const ch = CANVAS_SIZE / height;
+      function drawGridToContext(ctxTarget, dataGrid, width, height, withLines, canvasSize = CANVAS_SIZE) {
+        const cw = canvasSize / width;
+        const ch = canvasSize / height;
 
         // Kein Hintergrund füllen -> transparent
 
@@ -731,14 +1073,14 @@
             const px = x * cw + 0.5;
             ctxTarget.beginPath();
             ctxTarget.moveTo(px, 0);
-            ctxTarget.lineTo(px, CANVAS_SIZE);
+            ctxTarget.lineTo(px, canvasSize);
             ctxTarget.stroke();
           }
           for (let y = 0; y <= height; y++) {
             const py = y * ch + 0.5;
             ctxTarget.beginPath();
             ctxTarget.moveTo(0, py);
-            ctxTarget.lineTo(CANVAS_SIZE, py);
+            ctxTarget.lineTo(canvasSize, py);
             ctxTarget.stroke();
           }
           ctxTarget.restore();
@@ -749,13 +1091,12 @@
         const tctx = canvas.getContext("2d");
         const tw = canvas.width;
         const th = canvas.height;
-        const cw = (tw - 4) / gridWidth;
-        const ch = (th - 4) / gridHeight;
+        const cw = tw / gridWidth;
+        const ch = th / gridHeight;
 
-        tctx.fillStyle = "#111827";
-        tctx.fillRect(0, 0, tw, th);
+        tctx.clearRect(0, 0, tw, th);
         tctx.fillStyle = "#ffffff";
-        tctx.fillRect(2, 2, tw - 4, th - 4);
+        tctx.fillRect(0, 0, tw, th);
 
         for (let y = 0; y < gridHeight; y++) {
           for (let x = 0; x < gridWidth; x++) {
@@ -763,8 +1104,8 @@
             if (color) {
               tctx.fillStyle = color;
               tctx.fillRect(
-                2 + x * cw,
-                2 + y * ch,
+                x * cw,
+                y * ch,
                 Math.ceil(cw),
                 Math.ceil(ch)
               );
@@ -778,6 +1119,7 @@
         const [frame] = frames.splice(oldIndex, 1);
         frames.splice(newIndex, 0, frame);
         currentFrameIndex = newIndex;
+        flashFrameActions(newIndex);
         renderFramesList();
         redrawCanvas();
         updateInfo();
@@ -788,6 +1130,7 @@
         const clone = base.map(row => row.slice());
         frames.splice(index + 1, 0, clone);
         currentFrameIndex = index + 1;
+        flashFrameActions(currentFrameIndex);
         renderFramesList();
         redrawCanvas();
         updateInfo();
@@ -812,25 +1155,29 @@
       function renderFramesList() {
         framesList.innerHTML = "";
         const total = frames.length;
+        const flashIndex = flashActionsIndex;
+        flashActionsIndex = null;
         frames.forEach((grid, idx) => {
           const item = document.createElement("div");
           item.className = "frame-item" + (idx === currentFrameIndex ? " active" : "");
+          if (total > 1) {
+            item.draggable = true;
+          }
+          const thumbWrap = document.createElement("div");
+          thumbWrap.className = "frame-thumb-wrap";
           const thumb = document.createElement("canvas");
           thumb.className = "frame-thumb";
-          thumb.width = 64;
-          thumb.height = 64;
+          thumb.width = frameThumbSize;
+          thumb.height = frameThumbSize;
           drawThumbnail(thumb, grid);
-          const label = document.createElement("div");
-          label.className = "frame-label";
-          label.textContent = "Bild";
+          thumbWrap.appendChild(thumb);
 
           const badge = document.createElement("div");
           badge.className = "frame-index-badge";
           badge.textContent = idx + 1;
+          thumbWrap.appendChild(badge);
 
-          item.appendChild(thumb);
-          item.appendChild(label);
-          item.appendChild(badge);
+          item.appendChild(thumbWrap);
 
           if (idx === currentFrameIndex) {
             const actions = document.createElement("div");
@@ -844,6 +1191,7 @@
                   <rect x="6" y="6" width="11" height="11" rx="1.5"></rect>
                   <rect x="9" y="9" width="11" height="11" rx="1.5"></rect>
                 </svg>`;
+              dupBtn.classList.add("bottom-right");
               dupBtn.addEventListener("click", (e) => {
                 e.stopPropagation();
                 duplicateFrame(idx);
@@ -851,19 +1199,6 @@
               actions.style.justifyContent = "flex-end";
               actions.appendChild(dupBtn);
             } else {
-              const leftBtn = document.createElement("button");
-              leftBtn.title = "Frame nach links verschieben";
-              leftBtn.innerHTML = `
-                <svg viewBox="0 0 24 24" class="icon">
-                  <polyline points="14 6 8 12 14 18"></polyline>
-                </svg>`;
-              leftBtn.disabled = (idx === 0);
-              leftBtn.style.opacity = idx === 0 ? "0.4" : "1";
-              leftBtn.addEventListener("click", (e) => {
-                e.stopPropagation();
-                moveFrame(idx, idx - 1);
-              });
-
               const copyBtn = document.createElement("button");
               copyBtn.title = "Frame kopieren";
               copyBtn.innerHTML = `
@@ -871,6 +1206,7 @@
                   <rect x="6" y="6" width="10" height="10" rx="1.5"></rect>
                   <rect x="10" y="10" width="8" height="8" rx="1.5"></rect>
                 </svg>`;
+              copyBtn.classList.add("bottom-right");
               copyBtn.addEventListener("click", (e) => {
                 e.stopPropagation();
                 duplicateFrame(idx);
@@ -885,48 +1221,118 @@
                   <line x1="10" y1="9" x2="10" y2="17"></line>
                   <line x1="14" y1="9" x2="14" y2="17"></line>
                 </svg>`;
+              delBtn.classList.add("top-left");
               delBtn.addEventListener("click", (e) => {
                 e.stopPropagation();
                 deleteFrame(idx);
               });
 
-              const rightBtn = document.createElement("button");
-              rightBtn.title = "Frame nach rechts verschieben";
-              rightBtn.innerHTML = `
+              const moveBtn = document.createElement("button");
+              moveBtn.title = "Frame verschieben";
+              moveBtn.innerHTML = `
                 <svg viewBox="0 0 24 24" class="icon">
-                  <polyline points="10 6 16 12 10 18"></polyline>
+                  <line x1="12" y1="4" x2="12" y2="20"></line>
+                  <line x1="4" y1="12" x2="20" y2="12"></line>
+                  <polyline points="9 7 12 4 15 7"></polyline>
+                  <polyline points="9 17 12 20 15 17"></polyline>
+                  <polyline points="7 9 4 12 7 15"></polyline>
+                  <polyline points="17 9 20 12 17 15"></polyline>
                 </svg>`;
-              rightBtn.disabled = (idx === total - 1);
-              rightBtn.style.opacity = idx === total - 1 ? "0.4" : "1";
-              rightBtn.addEventListener("click", (e) => {
+              const canMoveLeft = idx > 0;
+              const canMoveRight = idx < total - 1;
+              moveBtn.disabled = !(canMoveLeft || canMoveRight);
+              moveBtn.style.opacity = moveBtn.disabled ? "0.4" : "1";
+              moveBtn.classList.add("bottom-left");
+              moveBtn.addEventListener("click", (e) => {
                 e.stopPropagation();
-                moveFrame(idx, idx + 1);
+                if (moveBtn.disabled) return;
+                const rect = e.currentTarget.getBoundingClientRect();
+                const clickX = e.clientX - rect.left;
+                const preferRight = clickX >= rect.width / 2;
+                if (preferRight && canMoveRight) {
+                  moveFrame(idx, idx + 1);
+                } else if (!preferRight && canMoveLeft) {
+                  moveFrame(idx, idx - 1);
+                } else if (canMoveLeft) {
+                  moveFrame(idx, idx - 1);
+                } else if (canMoveRight) {
+                  moveFrame(idx, idx + 1);
+                }
               });
 
-              actions.appendChild(leftBtn);
+              actions.appendChild(moveBtn);
               actions.appendChild(copyBtn);
               actions.appendChild(delBtn);
-              actions.appendChild(rightBtn);
             }
 
-            item.appendChild(actions);
+            thumbWrap.appendChild(actions);
+
+            if (flashIndex === idx) {
+              requestAnimationFrame(() => {
+                item.classList.add("show-actions");
+                flashActionsTimeout = setTimeout(() => {
+                  item.classList.remove("show-actions");
+                  flashActionsTimeout = null;
+                }, 900);
+              });
+            }
           }
 
           item.addEventListener("click", () => {
+            const changed = currentFrameIndex !== idx;
             currentFrameIndex = idx;
+            if (changed) {
+              flashFrameActions(idx);
+            }
             renderFramesList();
             redrawCanvas();
             updateInfo();
           });
 
+          item.addEventListener("dragstart", (e) => {
+            if (total <= 1) return;
+            dragIndex = idx;
+            item.classList.add("dragging");
+            e.dataTransfer.effectAllowed = "move";
+          });
+
+          item.addEventListener("dragover", (e) => {
+            if (dragIndex === null || dragIndex === idx || total <= 1) return;
+            e.preventDefault();
+            item.classList.add("drag-over");
+            e.dataTransfer.dropEffect = "move";
+          });
+
+          item.addEventListener("dragleave", () => {
+            item.classList.remove("drag-over");
+          });
+
+          item.addEventListener("drop", (e) => {
+            if (dragIndex === null || dragIndex === idx || total <= 1) return;
+            e.preventDefault();
+            item.classList.remove("drag-over");
+            const targetIndex = idx > dragIndex ? idx - 1 : idx;
+            moveFrame(dragIndex, targetIndex);
+            dragIndex = null;
+          });
+
+          item.addEventListener("dragend", () => {
+            dragIndex = null;
+            item.classList.remove("dragging");
+            item.classList.remove("drag-over");
+          });
+
           framesList.appendChild(item);
         });
+
+        framesList.appendChild(newFrameBtn);
       }
 
       function redrawCanvas() {
         ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
         const grid = getCurrentGrid();
         drawGridToContext(ctx, grid, gridWidth, gridHeight, true);
+        refreshPreview();
       }
 
       function resizeAllFrames(newWidth, newHeight) {
@@ -1285,6 +1691,7 @@
         const empty = createEmptyGrid(gridWidth, gridHeight);
         frames.splice(currentFrameIndex + 1, 0, empty);
         currentFrameIndex++;
+        flashFrameActions(currentFrameIndex);
         renderFramesList();
         redrawCanvas();
         updateInfo();
@@ -1300,43 +1707,56 @@
       }
 
       function exportGIF() {
-        if (typeof GIF === "undefined") {
-          setStatus("GIF-Unterstützung nicht verfügbar.");
-          return;
-        }
+        if (gifExporting) return;
         if (!frames.length) {
           setStatus("Keine Frames vorhanden.");
           return;
         }
 
-        const gif = new GIF({
-          workers: 2,
-          quality: 10,
-          workerScript: "https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js"
-        });
+        const delay = getGifDelayMs();
+        const effectiveFps = Math.round(1000 / delay);
+        const exportSize = Math.min(512, Math.max(gridWidth, gridHeight) * 32);
+        gifExporting = true;
+        exportGifBtn.disabled = true;
+        exportGifBtn.textContent = "GIF wird erstellt …";
 
-        frames.forEach(grid => {
+        const restoreButton = message => {
+          gifExporting = false;
+          exportGifBtn.disabled = false;
+          exportGifBtn.textContent = "GIF";
+          if (message) {
+            setStatus(message);
+          }
+        };
+
+        const offCanvases = frames.map(grid => {
           const off = document.createElement("canvas");
-          off.width = CANVAS_SIZE;
-          off.height = CANVAS_SIZE;
+          off.width = exportSize;
+          off.height = exportSize;
           const offCtx = off.getContext("2d");
-          offCtx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-          drawGridToContext(offCtx, grid, gridWidth, gridHeight, false);
-          gif.addFrame(offCtx, { delay: 300 });
+          offCtx.clearRect(0, 0, exportSize, exportSize);
+          drawGridToContext(offCtx, grid, gridWidth, gridHeight, false, exportSize);
+          return off;
         });
 
-        gif.on("finished", function (blob) {
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = `pixely-${gridWidth}x${gridHeight}.gif`;
-          a.click();
-          URL.revokeObjectURL(url);
-          setStatus("GIF exportiert.");
-        });
-
-        gif.render();
-        setStatus("GIF wird erstellt …");
+        setTimeout(() => {
+          try {
+            const pixelData = offCanvases.map(off => off.getContext("2d").getImageData(0, 0, exportSize, exportSize).data);
+            const { palette, indexedFrames, transparentIndex } = buildPaletteAndFrames(pixelData, exportSize);
+            const delayCs = Math.max(1, Math.round(delay / 10));
+            const blob = encodeGif(indexedFrames, palette, exportSize, exportSize, delayCs, transparentIndex);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `pixely-${gridWidth}x${gridHeight}.gif`;
+            a.click();
+            URL.revokeObjectURL(url);
+            restoreButton(`GIF exportiert (${effectiveFps} FPS).`);
+          } catch (err) {
+            console.error(err);
+            restoreButton("GIF-Export fehlgeschlagen.");
+          }
+        }, 20);
       }
 
       // Events
@@ -1378,6 +1798,25 @@
 
       exportPngBtn.addEventListener("click", exportPNG);
       exportGifBtn.addEventListener("click", exportGIF);
+      gifFpsInput.addEventListener("input", () => {
+        updateFpsLabel();
+        if (previewPlaying) {
+          startPreview();
+        } else {
+          refreshPreview();
+        }
+      });
+      togglePreviewBtn.addEventListener("click", () => {
+        if (previewPlaying) {
+          stopPreview();
+        } else {
+          startPreview();
+        }
+      });
+      restartPreviewBtn.addEventListener("click", () => {
+        stopPreview();
+        renderPreviewFrame(currentFrameIndex);
+      });
 
       canvas.addEventListener("mousedown", handlePointerDown);
       canvas.addEventListener("mousemove", handlePointerMove);
@@ -1398,6 +1837,7 @@
 
       // Start
       initFrames();
+      updateFpsLabel();
       setTool("pinsel");
       setStatus("Bereit zum Zeichnen.");
     })();
