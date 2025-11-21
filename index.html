@@ -812,8 +812,12 @@
               colors.push([r, g, b]);
               idx = colors.length - 1;
               colorToIndex.set(key, idx);
-              if (colors.length > 256) {
-                throw new Error("Zu viele Farben für GIF-Palette (max. 255 + Transparenz).");
+
+              if (!needsTransparency && colors.length > 256) {
+                throw new Error("Zu viele Farben für GIF-Palette (max. 256 ohne Transparenz).");
+              }
+              if (needsTransparency && colors.length > 255) {
+                throw new Error("Zu viele Farben für GIF-Palette (max. 255 mit Transparenz).");
               }
             }
             idxFrame[p] = idx;
@@ -1753,7 +1757,9 @@
           off.width = exportSize;
           off.height = exportSize;
           const offCtx = off.getContext("2d");
-          offCtx.clearRect(0, 0, exportSize, exportSize);
+          offCtx.imageSmoothingEnabled = false;
+          offCtx.fillStyle = "#ffffff";
+          offCtx.fillRect(0, 0, exportSize, exportSize);
           drawGridToContext(offCtx, grid, gridWidth, gridHeight, false, exportSize);
           return off;
         });
