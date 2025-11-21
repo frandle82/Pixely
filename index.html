@@ -946,9 +946,10 @@
           pushByte(4);
           const hasTransparency = transparentIndex !== null;
           // Disposal Methode 2 (0b010) = Hintergrund wiederherstellen.
-          // Damit bleibt jede Frame-Zeichnung sauber isoliert und es
-          // bleiben keine Pixelreste der vorherigen Frames zurück.
-          const disposal = hasTransparency ? 0x08 : 0x00;
+          // Immer aktivieren, damit jeder Frame seinen eigenen Inhalt
+          // ohne Überbleibsel vorheriger Frames zeigt – auch wenn keine
+          // Transparenz verwendet wird.
+          const disposal = 0x08;
           const transpFlag = hasTransparency ? 0x01 : 0x00;
           pushByte(disposal | transpFlag);
           pushWord(delayCs);
