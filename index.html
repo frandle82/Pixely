@@ -973,20 +973,6 @@
               actions.style.justifyContent = "flex-end";
               actions.appendChild(dupBtn);
             } else {
-              const leftBtn = document.createElement("button");
-              leftBtn.title = "Frame nach links verschieben";
-              leftBtn.innerHTML = `
-                <svg viewBox="0 0 24 24" class="icon">
-                  <polyline points="14 6 8 12 14 18"></polyline>
-                </svg>`;
-              leftBtn.disabled = (idx === 0);
-              leftBtn.style.opacity = idx === 0 ? "0.4" : "1";
-              leftBtn.classList.add("top-left");
-              leftBtn.addEventListener("click", (e) => {
-                e.stopPropagation();
-                moveFrame(idx, idx - 1);
-              });
-
               const copyBtn = document.createElement("button");
               copyBtn.title = "Frame kopieren";
               copyBtn.innerHTML = `
@@ -994,7 +980,7 @@
                   <rect x="6" y="6" width="10" height="10" rx="1.5"></rect>
                   <rect x="10" y="10" width="8" height="8" rx="1.5"></rect>
                 </svg>`;
-              copyBtn.classList.add("top-right");
+              copyBtn.classList.add("bottom-right");
               copyBtn.addEventListener("click", (e) => {
                 e.stopPropagation();
                 duplicateFrame(idx);
@@ -1009,30 +995,44 @@
                   <line x1="10" y1="9" x2="10" y2="17"></line>
                   <line x1="14" y1="9" x2="14" y2="17"></line>
                 </svg>`;
-              delBtn.classList.add("bottom-left");
+              delBtn.classList.add("top-left");
               delBtn.addEventListener("click", (e) => {
                 e.stopPropagation();
                 deleteFrame(idx);
               });
 
-              const rightBtn = document.createElement("button");
-              rightBtn.title = "Frame nach rechts verschieben";
-              rightBtn.innerHTML = `
+              const moveBtn = document.createElement("button");
+              moveBtn.title = "Frame verschieben (links/rechts)";
+              moveBtn.innerHTML = `
                 <svg viewBox="0 0 24 24" class="icon">
-                  <polyline points="10 6 16 12 10 18"></polyline>
+                  <polyline points="13 6 7 12 13 18"></polyline>
+                  <polyline points="11 6 17 12 11 18"></polyline>
                 </svg>`;
-              rightBtn.disabled = (idx === total - 1);
-              rightBtn.style.opacity = idx === total - 1 ? "0.4" : "1";
-              rightBtn.classList.add("bottom-right");
-              rightBtn.addEventListener("click", (e) => {
+              const canMoveLeft = idx > 0;
+              const canMoveRight = idx < total - 1;
+              moveBtn.disabled = !(canMoveLeft || canMoveRight);
+              moveBtn.style.opacity = moveBtn.disabled ? "0.4" : "1";
+              moveBtn.classList.add("bottom-left");
+              moveBtn.addEventListener("click", (e) => {
                 e.stopPropagation();
-                moveFrame(idx, idx + 1);
+                if (moveBtn.disabled) return;
+                const rect = e.currentTarget.getBoundingClientRect();
+                const clickX = e.clientX - rect.left;
+                const preferRight = clickX >= rect.width / 2;
+                if (preferRight && canMoveRight) {
+                  moveFrame(idx, idx + 1);
+                } else if (!preferRight && canMoveLeft) {
+                  moveFrame(idx, idx - 1);
+                } else if (canMoveLeft) {
+                  moveFrame(idx, idx - 1);
+                } else if (canMoveRight) {
+                  moveFrame(idx, idx + 1);
+                }
               });
 
-              actions.appendChild(leftBtn);
+              actions.appendChild(moveBtn);
               actions.appendChild(copyBtn);
               actions.appendChild(delBtn);
-              actions.appendChild(rightBtn);
             }
 
             item.appendChild(actions);
