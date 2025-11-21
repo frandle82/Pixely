@@ -241,6 +241,14 @@
       grid-template-columns: 1fr 1fr;
       grid-template-rows: 1fr 1fr;
       pointer-events: none;
+      opacity: 0;
+      transform: translateY(2px);
+      transition: opacity 0.14s ease, transform 0.14s ease;
+    }
+    .frame-item:hover .frame-actions,
+    .frame-item.show-actions .frame-actions {
+      opacity: 1;
+      transform: translateY(0);
     }
     .frame-actions button {
       pointer-events: auto;
@@ -731,6 +739,9 @@
       let previewIndex = 0;
       let previewPlaying = false;
       let dragIndex = null;
+      let flashActionsIndex = null;
+      let flashActionsTimeout = null;
+      let gifExporting = false;
 
       const toolButtons = {
         pinsel: brushBtn,
@@ -742,6 +753,14 @@
 
       function setStatus(msg) {
         statusText.textContent = msg;
+      }
+
+      function flashFrameActions(index) {
+        flashActionsIndex = index;
+        if (flashActionsTimeout) {
+          clearTimeout(flashActionsTimeout);
+          flashActionsTimeout = null;
+        }
       }
 
       function getGifDelayMs() {
@@ -896,6 +915,7 @@
         const [frame] = frames.splice(oldIndex, 1);
         frames.splice(newIndex, 0, frame);
         currentFrameIndex = newIndex;
+        flashFrameActions(newIndex);
         renderFramesList();
         redrawCanvas();
         updateInfo();
@@ -906,6 +926,7 @@
         const clone = base.map(row => row.slice());
         frames.splice(index + 1, 0, clone);
         currentFrameIndex = index + 1;
+        flashFrameActions(currentFrameIndex);
         renderFramesList();
         redrawCanvas();
         updateInfo();
@@ -930,6 +951,8 @@
       function renderFramesList() {
         framesList.innerHTML = "";
         const total = frames.length;
+        const flashIndex = flashActionsIndex;
+        flashActionsIndex = null;
         frames.forEach((grid, idx) => {
           const item = document.createElement("div");
           item.className = "frame-item" + (idx === currentFrameIndex ? " active" : "");
@@ -1002,11 +1025,15 @@
               });
 
               const moveBtn = document.createElement("button");
-              moveBtn.title = "Frame verschieben (links/rechts)";
+              moveBtn.title = "Frame verschieben";
               moveBtn.innerHTML = `
                 <svg viewBox="0 0 24 24" class="icon">
-                  <polyline points="13 6 7 12 13 18"></polyline>
-                  <polyline points="11 6 17 12 11 18"></polyline>
+                  <line x1="12" y1="4" x2="12" y2="20"></line>
+                  <line x1="4" y1="12" x2="20" y2="12"></line>
+                  <polyline points="9 7 12 4 15 7"></polyline>
+                  <polyline points="9 17 12 20 15 17"></polyline>
+                  <polyline points="7 9 4 12 7 15"></polyline>
+                  <polyline points="17 9 20 12 17 15"></polyline>
                 </svg>`;
               const canMoveLeft = idx > 0;
               const canMoveRight = idx < total - 1;
@@ -1036,10 +1063,24 @@
             }
 
             item.appendChild(actions);
+
+            if (flashIndex === idx) {
+              requestAnimationFrame(() => {
+                item.classList.add("show-actions");
+                flashActionsTimeout = setTimeout(() => {
+                  item.classList.remove("show-actions");
+                  flashActionsTimeout = null;
+                }, 900);
+              });
+            }
           }
 
           item.addEventListener("click", () => {
+            const changed = currentFrameIndex !== idx;
             currentFrameIndex = idx;
+            if (changed) {
+              flashFrameActions(idx);
+            }
             renderFramesList();
             redrawCanvas();
             updateInfo();
@@ -1447,6 +1488,7 @@
         const empty = createEmptyGrid(gridWidth, gridHeight);
         frames.splice(currentFrameIndex + 1, 0, empty);
         currentFrameIndex++;
+        flashFrameActions(currentFrameIndex);
         renderFramesList();
         redrawCanvas();
         updateInfo();
@@ -1462,6 +1504,7 @@
       }
 
       function exportGIF() {
+        if (gifExporting) return;
         if (typeof GIF === "undefined") {
           setStatus("GIF-Unterstützung nicht verfügbar.");
           return;
@@ -1472,6 +1515,11 @@
         }
 
         const delay = getGifDelayMs();
+        const effectiveFps = Math.round(1000 / delay);
+        gifExporting = true;
+        exportGifBtn.disabled = true;
+        exportGifBtn.textContent = "GIF wird erstellt …";
+
         const gif = new GIF({
           workers: 2,
           quality: 10,
@@ -1487,7 +1535,7 @@
           const offCtx = off.getContext("2d");
           offCtx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
           drawGridToContext(offCtx, grid, gridWidth, gridHeight, false);
-          gif.addFrame(offCtx, { delay, copy: true });
+          gif.addFrame(off, { delay, copy: true });
         });
 
         gif.on("finished", function (blob) {
@@ -1497,7 +1545,17 @@
           a.download = `pixely-${gridWidth}x${gridHeight}.gif`;
           a.click();
           URL.revokeObjectURL(url);
-          setStatus("GIF exportiert.");
+          exportGifBtn.disabled = false;
+          exportGifBtn.textContent = "GIF";
+          gifExporting = false;
+          setStatus(`GIF exportiert (${effectiveFps} FPS).`);
+        });
+
+        gif.on("error", function () {
+          gifExporting = false;
+          exportGifBtn.disabled = false;
+          exportGifBtn.textContent = "GIF";
+          setStatus("GIF-Export fehlgeschlagen.");
         });
 
         gif.render();
