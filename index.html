@@ -202,17 +202,18 @@
       box-shadow: 0 0 0 1px var(--accent-soft);
       background: #030712;
     }
-    .frame-thumb {
-      width: 64px;
-      height: 64px;
-      border-radius: 0.4rem;
-      background: #111827;
-      border: 1px solid #111827;
+    .frame-thumb-wrap {
+      position: relative;
+      width: 76px;
+      height: 76px;
       flex-shrink: 0;
     }
-    .frame-label {
-      font-size: 0.8rem;
-      color: #e5e7eb;
+    .frame-thumb {
+      width: 100%;
+      height: 100%;
+      border-radius: 0.45rem;
+      background: #111827;
+      border: 1px solid #111827;
     }
 
     .frame-index-badge {
@@ -959,22 +960,21 @@
           if (total > 1) {
             item.draggable = true;
           }
+          const thumbWrap = document.createElement("div");
+          thumbWrap.className = "frame-thumb-wrap";
           const thumb = document.createElement("canvas");
           thumb.className = "frame-thumb";
-          thumb.width = 64;
-          thumb.height = 64;
+          thumb.width = 76;
+          thumb.height = 76;
           drawThumbnail(thumb, grid);
-          const label = document.createElement("div");
-          label.className = "frame-label";
-          label.textContent = "Bild";
+          thumbWrap.appendChild(thumb);
 
           const badge = document.createElement("div");
           badge.className = "frame-index-badge";
           badge.textContent = idx + 1;
+          thumbWrap.appendChild(badge);
 
-          item.appendChild(thumb);
-          item.appendChild(label);
-          item.appendChild(badge);
+          item.appendChild(thumbWrap);
 
           if (idx === currentFrameIndex) {
             const actions = document.createElement("div");
@@ -1062,7 +1062,7 @@
               actions.appendChild(delBtn);
             }
 
-            item.appendChild(actions);
+            thumbWrap.appendChild(actions);
 
             if (flashIndex === idx) {
               requestAnimationFrame(() => {
@@ -1520,46 +1520,75 @@
         exportGifBtn.disabled = true;
         exportGifBtn.textContent = "GIF wird erstellt …";
 
-        const gif = new GIF({
-          workers: 2,
-          quality: 10,
-          workerScript: "https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js",
-          workerPath: "https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js",
-          repeat: 0,
-        });
+        let timeoutId = null;
 
-        frames.forEach(grid => {
-          const off = document.createElement("canvas");
-          off.width = CANVAS_SIZE;
-          off.height = CANVAS_SIZE;
-          const offCtx = off.getContext("2d");
-          offCtx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-          drawGridToContext(offCtx, grid, gridWidth, gridHeight, false);
-          gif.addFrame(off, { delay, copy: true });
-        });
+        try {
+          const gif = new GIF({
+            workers: 2,
+            quality: 1,
+            width: CANVAS_SIZE,
+            height: CANVAS_SIZE,
+            workerScript: "https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js",
+            repeat: 0,
+          });
 
-        gif.on("finished", function (blob) {
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = `pixely-${gridWidth}x${gridHeight}.gif`;
-          a.click();
-          URL.revokeObjectURL(url);
-          exportGifBtn.disabled = false;
-          exportGifBtn.textContent = "GIF";
-          gifExporting = false;
-          setStatus(`GIF exportiert (${effectiveFps} FPS).`);
-        });
+          frames.forEach(grid => {
+            const off = document.createElement("canvas");
+            off.width = CANVAS_SIZE;
+            off.height = CANVAS_SIZE;
+            const offCtx = off.getContext("2d");
+            offCtx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+            drawGridToContext(offCtx, grid, gridWidth, gridHeight, false);
+            gif.addFrame(off, { delay, copy: true });
+          });
 
-        gif.on("error", function () {
+          gif.on("progress", function (p) {
+            setStatus(`GIF wird erstellt … ${Math.round(p * 100)}%`);
+          });
+
+          gif.on("finished", function (blob) {
+            if (timeoutId) {
+              clearTimeout(timeoutId);
+            }
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `pixely-${gridWidth}x${gridHeight}.gif`;
+            a.click();
+            URL.revokeObjectURL(url);
+            exportGifBtn.disabled = false;
+            exportGifBtn.textContent = "GIF";
+            gifExporting = false;
+            setStatus(`GIF exportiert (${effectiveFps} FPS).`);
+          });
+
+          gif.on("error", function () {
+            if (timeoutId) {
+              clearTimeout(timeoutId);
+            }
+            gifExporting = false;
+            exportGifBtn.disabled = false;
+            exportGifBtn.textContent = "GIF";
+            setStatus("GIF-Export fehlgeschlagen.");
+          });
+
+          timeoutId = setTimeout(() => {
+            if (!gifExporting) return;
+            gifExporting = false;
+            exportGifBtn.disabled = false;
+            exportGifBtn.textContent = "GIF";
+            setStatus("GIF-Export fehlgeschlagen.");
+          }, 15000);
+
+          gif.render();
+          setStatus("GIF wird erstellt …");
+        } catch (err) {
+          console.error(err);
           gifExporting = false;
           exportGifBtn.disabled = false;
           exportGifBtn.textContent = "GIF";
           setStatus("GIF-Export fehlgeschlagen.");
-        });
-
-        gif.render();
-        setStatus("GIF wird erstellt …");
+        }
       }
 
       // Events
