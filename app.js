@@ -102,45 +102,48 @@
     return { fps, delayMs: Math.round(1000 / fps) };
   }
 
-  function buildPaletteAndFrames(pixelsPerFrame, exportSize) {
+  function buildPaletteAndFramesFromGrids(frameGrids, width, height, exportSize) {
     const colors = [];
     const colorToIndex = new Map();
     let needsTransparency = false;
 
-    const indexedFrames = pixelsPerFrame.map(data => {
-      const idxFrame = new Uint8Array(exportSize * exportSize);
-      for (let i = 0, p = 0; i < data.length; i += 4, p++) {
-        const a = data[i + 3];
-        if (a < 8) {
-          idxFrame[p] = 0xff; // Platzhalter, wird später als Transparenz-Index ersetzt
-          needsTransparency = true;
-          continue;
-        }
-
-        const r = data[i];
-        const g = data[i + 1];
-        const b = data[i + 2];
-        const key = `${r},${g},${b}`;
-        let idx = colorToIndex.get(key);
-        if (idx === undefined) {
-          colors.push([r, g, b]);
-          idx = colors.length - 1;
-          colorToIndex.set(key, idx);
-
-          if (!needsTransparency && colors.length > 256) {
-            throw new Error("Zu viele Farben für GIF-Palette (max. 256 ohne Transparenz).");
-          }
-          if (needsTransparency && colors.length > 255) {
-            throw new Error("Zu viele Farben für GIF-Palette (max. 255 mit Transparenz).");
-          }
-        }
-        idxFrame[p] = idx;
+    function ensureColorIndex(hex) {
+      const rgb = colorToRgbArray(hex);
+      if (!rgb) return null;
+      const key = rgb.join(",");
+      let idx = colorToIndex.get(key);
+      if (idx === undefined) {
+        colors.push(rgb);
+        idx = colors.length - 1;
+        colorToIndex.set(key, idx);
       }
-      return idxFrame;
+      return idx;
+    }
+
+    const indexedFrames = frameGrids.map(grid => {
+      const frame = new Uint8Array(exportSize * exportSize);
+      for (let y = 0; y < exportSize; y++) {
+        const srcY = Math.min(height - 1, Math.floor((y / exportSize) * height));
+        for (let x = 0; x < exportSize; x++) {
+          const srcX = Math.min(width - 1, Math.floor((x / exportSize) * width));
+          const color = grid[srcY][srcX];
+          const pos = y * exportSize + x;
+          if (!color) {
+            frame[pos] = 0xff;
+            needsTransparency = true;
+          } else {
+            const idx = ensureColorIndex(color);
+            frame[pos] = idx ?? 0xff;
+            if (idx === null) needsTransparency = true;
+          }
+        }
+      }
+      return frame;
     });
 
-    if (needsTransparency && colors.length > 255) {
-      throw new Error("Zu viele Farben für GIF-Palette (max. 255 mit Transparenz).");
+    const maxColors = needsTransparency ? 255 : 256;
+    if (colors.length > maxColors) {
+      throw new Error(`Zu viele Farben für GIF-Palette (max. ${maxColors}${needsTransparency ? " mit Transparenz" : ""}).`);
     }
 
     let palette = colors;
@@ -160,7 +163,6 @@
       });
     }
 
-    // Palette Größe auf Potenz von 2 auffüllen (mindestens 2 Farben)
     let paletteSize = 1;
     while (paletteSize < palette.length) paletteSize <<= 1;
     paletteSize = Math.max(2, paletteSize);
@@ -1133,11 +1135,14 @@
       }
     };
 
-    const pixelData = getFramePixelBuffers(exportSize);
-
     setTimeout(() => {
       try {
-        const { palette, indexedFrames, transparentIndex } = buildPaletteAndFrames(pixelData, exportSize);
+        const { palette, indexedFrames, transparentIndex } = buildPaletteAndFramesFromGrids(
+          frames,
+          gridWidth,
+          gridHeight,
+          exportSize
+        );
         const delayCs = Math.max(1, Math.round(delayMs / 10));
         const blob = encodeGif(indexedFrames, palette, exportSize, exportSize, delayCs, transparentIndex);
         const url = URL.createObjectURL(blob);
