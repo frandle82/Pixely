@@ -789,7 +789,7 @@
       }
 
       function buildPaletteAndFrames(pixelsPerFrame, exportSize) {
-        const palette = [[0, 0, 0]]; // Index 0 = transparent
+        const colors = [];
         const colorToIndex = new Map();
         let needsTransparency = false;
 
@@ -798,7 +798,7 @@
           for (let i = 0, p = 0; i < data.length; i += 4, p++) {
             const a = data[i + 3];
             if (a < 8) {
-              idxFrame[p] = 0;
+              idxFrame[p] = 0xff; // Platzhalter, wird später als Transparenz-Index ersetzt
               needsTransparency = true;
               continue;
             }
@@ -809,10 +809,10 @@
             const key = `${r},${g},${b}`;
             let idx = colorToIndex.get(key);
             if (idx === undefined) {
-              palette.push([r, g, b]);
-              idx = palette.length - 1;
+              colors.push([r, g, b]);
+              idx = colors.length - 1;
               colorToIndex.set(key, idx);
-              if (palette.length > 256) {
+              if (colors.length > 256) {
                 throw new Error("Zu viele Farben für GIF-Palette (max. 255 + Transparenz).");
               }
             }
@@ -821,13 +821,30 @@
           return idxFrame;
         });
 
+        let palette = colors;
+        let transparentIndex = null;
+
+        if (needsTransparency) {
+          transparentIndex = 0;
+          palette = [[0, 0, 0], ...colors];
+          indexedFrames.forEach(frame => {
+            for (let i = 0; i < frame.length; i++) {
+              if (frame[i] === 0xff) {
+                frame[i] = 0;
+              } else {
+                frame[i] = frame[i] + 1;
+              }
+            }
+          });
+        }
+
         // Palette Größe auf Potenz von 2 auffüllen (mindestens 2 Farben)
         let paletteSize = 1;
         while (paletteSize < palette.length) paletteSize <<= 1;
         paletteSize = Math.max(2, paletteSize);
         while (palette.length < paletteSize) palette.push([0, 0, 0]);
 
-        return { palette, indexedFrames, transparentIndex: needsTransparency ? 0 : null };
+        return { palette, indexedFrames, transparentIndex };
       }
 
       function lzwEncode(minCodeSize, indexStream) {
@@ -945,11 +962,9 @@
           pushByte(0xf9);
           pushByte(4);
           const hasTransparency = transparentIndex !== null;
-          // Disposal Methode 2 (0b010) = Hintergrund wiederherstellen.
-          // Immer aktivieren, damit jeder Frame seinen eigenen Inhalt
-          // ohne Überbleibsel vorheriger Frames zeigt – auch wenn keine
-          // Transparenz verwendet wird.
-          const disposal = 0x08;
+          // Disposal Methode nur setzen, wenn Transparenz genutzt wird.
+          // So bleiben Frames ohne Transparenz vollständig sichtbar.
+          const disposal = transparentIndex !== null ? 0x08 : 0x00;
           const transpFlag = hasTransparency ? 0x01 : 0x00;
           pushByte(disposal | transpFlag);
           pushWord(delayCs);
