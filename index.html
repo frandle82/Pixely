@@ -228,31 +228,34 @@
 
     .frame-actions {
       position: absolute;
-      bottom: 4px;
-      left: 4px;
-      right: 4px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      inset: 4px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
       pointer-events: none;
     }
     .frame-actions button {
       pointer-events: auto;
-      border-radius: 999px;
-      border: 1px solid #111827;
-      background: rgba(15, 23, 42, 0.9);
-      width: 22px;
-      height: 22px;
-      display: flex;
+      border-radius: 0.65rem;
+      border: 1px solid #0b1221;
+      background: rgba(15, 23, 42, 0.94);
+      width: 28px;
+      height: 28px;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
       padding: 0;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
     }
     .frame-actions svg {
-      width: 13px;
-      height: 13px;
-      stroke-width: 1.7;
+      width: 15px;
+      height: 15px;
+      stroke-width: 1.6;
     }
+    .frame-actions .top-left { justify-self: start; align-self: start; }
+    .frame-actions .top-right { justify-self: end; align-self: start; }
+    .frame-actions .bottom-left { justify-self: start; align-self: end; }
+    .frame-actions .bottom-right { justify-self: end; align-self: end; }
 
     .new-frame-btn {
       margin-top: 0.4rem;
@@ -352,6 +355,32 @@
       display: flex;
       flex-direction: column;
       gap: 0.35rem;
+    }
+
+    .preview-card {
+      border: 1px solid #111827;
+      border-radius: 0.6rem;
+      padding: 0.6rem;
+      background: #030712;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+    }
+
+    .preview-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    #gifPreviewCanvas {
+      width: 100%;
+      max-width: 220px;
+      aspect-ratio: 1 / 1;
+      border-radius: 0.5rem;
+      background: #0b1221;
+      border: 1px dashed #1f2937;
     }
 
     .row {
@@ -605,6 +634,23 @@
             <input id="loadInput" type="file" accept="application/json" style="display:none" />
           </div>
         </div>
+
+        <!-- GIF Vorschau -->
+        <div class="section">
+          <div class="section-title">GIF &amp; Vorschau</div>
+          <div class="preview-card">
+            <div class="preview-controls">
+              <label for="gifFpsInput">FPS</label>
+              <input id="gifFpsInput" type="range" min="1" max="24" value="5" />
+              <span id="gifFpsValue" class="pill">5 FPS</span>
+            </div>
+            <canvas id="gifPreviewCanvas" width="200" height="200"></canvas>
+            <div class="preview-controls">
+              <button id="togglePreviewBtn" class="btn">Vorschau abspielen</button>
+              <button id="restartPreviewBtn" class="btn btn-ghost">Neu starten</button>
+            </div>
+          </div>
+        </div>
       </aside>
     </main>
   </div>
@@ -638,6 +684,12 @@
       const clearBtn = document.getElementById("clearBtn");
       const exportPngBtn = document.getElementById("exportPngBtn");
       const exportGifBtn = document.getElementById("exportGifBtn");
+      const gifPreviewCanvas = document.getElementById("gifPreviewCanvas");
+      const gifPreviewCtx = gifPreviewCanvas.getContext("2d");
+      const gifFpsInput = document.getElementById("gifFpsInput");
+      const gifFpsValue = document.getElementById("gifFpsValue");
+      const togglePreviewBtn = document.getElementById("togglePreviewBtn");
+      const restartPreviewBtn = document.getElementById("restartPreviewBtn");
 
       const brushSizeButtons = Array.from(document.querySelectorAll(".brush-size-btn"));
 
@@ -667,6 +719,10 @@
       let shapeStart = null;
       let shapeCurrent = null;
 
+      let previewTimer = null;
+      let previewIndex = 0;
+      let previewPlaying = false;
+
       const toolButtons = {
         pinsel: brushBtn,
         radierer: eraserBtn,
@@ -677,6 +733,59 @@
 
       function setStatus(msg) {
         statusText.textContent = msg;
+      }
+
+      function getGifDelayMs() {
+        const fps = Math.max(1, Math.min(24, parseInt(gifFpsInput.value, 10) || 5));
+        gifFpsInput.value = fps;
+        return Math.round(1000 / fps);
+      }
+
+      function updateFpsLabel() {
+        gifFpsValue.textContent = `${gifFpsInput.value} FPS`;
+      }
+
+      function renderPreviewFrame(idx) {
+        if (!frames.length) return;
+        previewIndex = Math.max(0, Math.min(idx, frames.length - 1));
+        gifPreviewCtx.clearRect(0, 0, gifPreviewCanvas.width, gifPreviewCanvas.height);
+        drawGridToContext(
+          gifPreviewCtx,
+          frames[previewIndex],
+          gridWidth,
+          gridHeight,
+          false,
+          gifPreviewCanvas.width
+        );
+      }
+
+      function stopPreview() {
+        if (previewTimer) {
+          clearInterval(previewTimer);
+          previewTimer = null;
+        }
+        previewPlaying = false;
+        togglePreviewBtn.textContent = "Vorschau abspielen";
+      }
+
+      function startPreview() {
+        if (!frames.length) return;
+        stopPreview();
+        previewPlaying = true;
+        togglePreviewBtn.textContent = "Vorschau stoppen";
+        const delay = getGifDelayMs();
+        previewIndex = 0;
+        renderPreviewFrame(previewIndex);
+        previewTimer = setInterval(() => {
+          previewIndex = (previewIndex + 1) % frames.length;
+          renderPreviewFrame(previewIndex);
+        }, delay);
+      }
+
+      function refreshPreview() {
+        if (!previewPlaying) {
+          renderPreviewFrame(currentFrameIndex);
+        }
       }
 
       function createEmptyGrid(width, height) {
@@ -699,9 +808,9 @@
         gridInfo.textContent = `${gridWidth}×${gridHeight} | Frame ${currentFrameIndex + 1}/${frames.length}`;
       }
 
-      function drawGridToContext(ctxTarget, dataGrid, width, height, withLines) {
-        const cw = CANVAS_SIZE / width;
-        const ch = CANVAS_SIZE / height;
+      function drawGridToContext(ctxTarget, dataGrid, width, height, withLines, canvasSize = CANVAS_SIZE) {
+        const cw = canvasSize / width;
+        const ch = canvasSize / height;
 
         // Kein Hintergrund füllen -> transparent
 
@@ -731,14 +840,14 @@
             const px = x * cw + 0.5;
             ctxTarget.beginPath();
             ctxTarget.moveTo(px, 0);
-            ctxTarget.lineTo(px, CANVAS_SIZE);
+            ctxTarget.lineTo(px, canvasSize);
             ctxTarget.stroke();
           }
           for (let y = 0; y <= height; y++) {
             const py = y * ch + 0.5;
             ctxTarget.beginPath();
             ctxTarget.moveTo(0, py);
-            ctxTarget.lineTo(CANVAS_SIZE, py);
+            ctxTarget.lineTo(canvasSize, py);
             ctxTarget.stroke();
           }
           ctxTarget.restore();
@@ -844,6 +953,7 @@
                   <rect x="6" y="6" width="11" height="11" rx="1.5"></rect>
                   <rect x="9" y="9" width="11" height="11" rx="1.5"></rect>
                 </svg>`;
+              dupBtn.classList.add("bottom-right");
               dupBtn.addEventListener("click", (e) => {
                 e.stopPropagation();
                 duplicateFrame(idx);
@@ -859,6 +969,7 @@
                 </svg>`;
               leftBtn.disabled = (idx === 0);
               leftBtn.style.opacity = idx === 0 ? "0.4" : "1";
+              leftBtn.classList.add("top-left");
               leftBtn.addEventListener("click", (e) => {
                 e.stopPropagation();
                 moveFrame(idx, idx - 1);
@@ -871,6 +982,7 @@
                   <rect x="6" y="6" width="10" height="10" rx="1.5"></rect>
                   <rect x="10" y="10" width="8" height="8" rx="1.5"></rect>
                 </svg>`;
+              copyBtn.classList.add("top-right");
               copyBtn.addEventListener("click", (e) => {
                 e.stopPropagation();
                 duplicateFrame(idx);
@@ -885,6 +997,7 @@
                   <line x1="10" y1="9" x2="10" y2="17"></line>
                   <line x1="14" y1="9" x2="14" y2="17"></line>
                 </svg>`;
+              delBtn.classList.add("bottom-left");
               delBtn.addEventListener("click", (e) => {
                 e.stopPropagation();
                 deleteFrame(idx);
@@ -898,6 +1011,7 @@
                 </svg>`;
               rightBtn.disabled = (idx === total - 1);
               rightBtn.style.opacity = idx === total - 1 ? "0.4" : "1";
+              rightBtn.classList.add("bottom-right");
               rightBtn.addEventListener("click", (e) => {
                 e.stopPropagation();
                 moveFrame(idx, idx + 1);
@@ -921,12 +1035,15 @@
 
           framesList.appendChild(item);
         });
+
+        framesList.appendChild(newFrameBtn);
       }
 
       function redrawCanvas() {
         ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
         const grid = getCurrentGrid();
         drawGridToContext(ctx, grid, gridWidth, gridHeight, true);
+        refreshPreview();
       }
 
       function resizeAllFrames(newWidth, newHeight) {
@@ -1309,10 +1426,13 @@
           return;
         }
 
+        const delay = getGifDelayMs();
         const gif = new GIF({
           workers: 2,
           quality: 10,
-          workerScript: "https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js"
+          workerScript: "https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js",
+          workerPath: "https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js",
+          repeat: 0,
         });
 
         frames.forEach(grid => {
@@ -1322,7 +1442,7 @@
           const offCtx = off.getContext("2d");
           offCtx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
           drawGridToContext(offCtx, grid, gridWidth, gridHeight, false);
-          gif.addFrame(offCtx, { delay: 300 });
+          gif.addFrame(offCtx, { delay, copy: true });
         });
 
         gif.on("finished", function (blob) {
@@ -1378,6 +1498,25 @@
 
       exportPngBtn.addEventListener("click", exportPNG);
       exportGifBtn.addEventListener("click", exportGIF);
+      gifFpsInput.addEventListener("input", () => {
+        updateFpsLabel();
+        if (previewPlaying) {
+          startPreview();
+        } else {
+          refreshPreview();
+        }
+      });
+      togglePreviewBtn.addEventListener("click", () => {
+        if (previewPlaying) {
+          stopPreview();
+        } else {
+          startPreview();
+        }
+      });
+      restartPreviewBtn.addEventListener("click", () => {
+        stopPreview();
+        renderPreviewFrame(currentFrameIndex);
+      });
 
       canvas.addEventListener("mousedown", handlePointerDown);
       canvas.addEventListener("mousemove", handlePointerMove);
@@ -1398,6 +1537,7 @@
 
       // Start
       initFrames();
+      updateFpsLabel();
       setTool("pinsel");
       setStatus("Bereit zum Zeichnen.");
     })();
