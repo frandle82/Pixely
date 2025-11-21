@@ -237,21 +237,14 @@
       throw new Error("GifWriter nicht geladen.");
     }
 
-    const paletteBytes = new Uint8Array(palette.length * 3);
-    palette.forEach(([r, g, b], i) => {
-      const offset = i * 3;
-      paletteBytes[offset] = r;
-      paletteBytes[offset + 1] = g;
-      paletteBytes[offset + 2] = b;
-    });
-
-    const bufferSize = width * height * frames.length * 2 + paletteBytes.length + 1024;
+    const paletteInts = palette.map(([r, g, b]) => (r << 16) | (g << 8) | b);
+    const bufferSize = width * height * frames.length * 2 + paletteInts.length * 4 + 2048;
     const buffer = new Uint8Array(bufferSize);
     const writer = new GifWriter(buffer, width, height, { loop: 0 });
 
     frames.forEach(frame => {
       writer.addFrame(0, 0, width, height, frame, {
-        palette: paletteBytes,
+        palette: paletteInts,
         delay: delayCs,
         disposal: transparentIndex !== null ? 2 : 0,
         transparent: transparentIndex ?? undefined,
