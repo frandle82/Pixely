@@ -189,6 +189,14 @@
       cursor: pointer;
       transition: background 0.1s ease, border-color 0.1s ease;
     }
+    .frame-item.dragging {
+      opacity: 0.5;
+      cursor: grabbing;
+    }
+    .frame-item.drag-over {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent-soft);
+    }
     .frame-item.active {
       border-color: var(--accent);
       box-shadow: 0 0 0 1px var(--accent-soft);
@@ -722,6 +730,7 @@
       let previewTimer = null;
       let previewIndex = 0;
       let previewPlaying = false;
+      let dragIndex = null;
 
       const toolButtons = {
         pinsel: brushBtn,
@@ -924,6 +933,9 @@
         frames.forEach((grid, idx) => {
           const item = document.createElement("div");
           item.className = "frame-item" + (idx === currentFrameIndex ? " active" : "");
+          if (total > 1) {
+            item.draggable = true;
+          }
           const thumb = document.createElement("canvas");
           thumb.className = "frame-thumb";
           thumb.width = 64;
@@ -1031,6 +1043,39 @@
             renderFramesList();
             redrawCanvas();
             updateInfo();
+          });
+
+          item.addEventListener("dragstart", (e) => {
+            if (total <= 1) return;
+            dragIndex = idx;
+            item.classList.add("dragging");
+            e.dataTransfer.effectAllowed = "move";
+          });
+
+          item.addEventListener("dragover", (e) => {
+            if (dragIndex === null || dragIndex === idx || total <= 1) return;
+            e.preventDefault();
+            item.classList.add("drag-over");
+            e.dataTransfer.dropEffect = "move";
+          });
+
+          item.addEventListener("dragleave", () => {
+            item.classList.remove("drag-over");
+          });
+
+          item.addEventListener("drop", (e) => {
+            if (dragIndex === null || dragIndex === idx || total <= 1) return;
+            e.preventDefault();
+            item.classList.remove("drag-over");
+            const targetIndex = idx > dragIndex ? idx - 1 : idx;
+            moveFrame(dragIndex, targetIndex);
+            dragIndex = null;
+          });
+
+          item.addEventListener("dragend", () => {
+            dragIndex = null;
+            item.classList.remove("dragging");
+            item.classList.remove("drag-over");
           });
 
           framesList.appendChild(item);
