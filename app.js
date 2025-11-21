@@ -18,6 +18,7 @@
   const rectBtn = document.getElementById("rectBtn");
   const circleBtn = document.getElementById("circleBtn");
   const fillBtn = document.getElementById("fillBtn");
+  const moveBtn = document.getElementById("moveBtn");
   const mirrorToggleBtn = document.getElementById("mirrorToggleBtn");
 
   const saveBtn = document.getElementById("saveBtn");
@@ -63,6 +64,10 @@
   let isShapeDrawing = false;
   let shapeStart = null;
   let shapeCurrent = null;
+  let isMovingPattern = false;
+  let moveStartCell = null;
+  let moveOriginalGrid = null;
+  let moveOffset = { x: 0, y: 0 };
 
   let previewTimer = null;
   let previewIndex = 0;
@@ -78,6 +83,7 @@
     rechteck: rectBtn,
     kreis: circleBtn,
     fuellen: fillBtn,
+    verschieben: moveBtn,
   };
 
   function setStatus(msg) {
@@ -300,6 +306,22 @@
 
   function createEmptyGrid(width, height) {
     return Array.from({ length: height }, () => Array(width).fill(null));
+  }
+
+  function shiftGridData(grid, dx, dy) {
+    if (!grid) return createEmptyGrid(gridWidth, gridHeight);
+    const shifted = createEmptyGrid(gridWidth, gridHeight);
+    for (let y = 0; y < gridHeight; y++) {
+      for (let x = 0; x < gridWidth; x++) {
+        const color = grid[y][x];
+        if (!color) continue;
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx < 0 || nx >= gridWidth || ny < 0 || ny >= gridHeight) continue;
+        shifted[ny][nx] = color;
+      }
+    }
+    return shifted;
   }
 
   function initFrames() {
@@ -681,6 +703,14 @@
   }
 
   function setTool(tool) {
+    if (isMovingPattern && moveOriginalGrid) {
+      redrawCanvas();
+    }
+    isMovingPattern = false;
+    moveStartCell = null;
+    moveOriginalGrid = null;
+    moveOffset = { x: 0, y: 0 };
+
     currentTool = tool;
     isShapeDrawing = false;
     shapeStart = null;
@@ -954,7 +984,13 @@
     const cell = getCellFromEvent(ev);
     if (!cell) return;
 
-    if (currentTool === "pinsel" || currentTool === "radierer") {
+    if (currentTool === "verschieben") {
+      isMovingPattern = true;
+      moveStartCell = cell;
+      moveOffset = { x: 0, y: 0 };
+      moveOriginalGrid = getCurrentGrid().map(row => row.slice());
+      setStatus("Muster verschieben: Ziehe, um das Motiv neu zu positionieren.");
+    } else if (currentTool === "pinsel" || currentTool === "radierer") {
       isDrawing = true;
       paintBrush(cell);
     } else if (currentTool === "rechteck" || currentTool === "kreis") {
@@ -971,7 +1007,13 @@
   function handlePointerMove(ev) {
     const cell = getCellFromEvent(ev);
     if (!cell) return;
-    if (isDrawing && (currentTool === "pinsel" || currentTool === "radierer")) {
+    if (isMovingPattern && moveStartCell && moveOriginalGrid) {
+      moveOffset = { x: cell.x - moveStartCell.x, y: cell.y - moveStartCell.y };
+      const preview = shiftGridData(moveOriginalGrid, moveOffset.x, moveOffset.y);
+      ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+      drawGridToContext(ctx, preview, gridWidth, gridHeight, true);
+      setStatus(`Versatz: ${moveOffset.x}, ${moveOffset.y}`);
+    } else if (isDrawing && (currentTool === "pinsel" || currentTool === "radierer")) {
       paintBrush(cell);
     } else if (isShapeDrawing && shapeStart && (currentTool === "rechteck" || currentTool === "kreis")) {
       shapeCurrent = cell;
@@ -980,6 +1022,27 @@
   }
 
   function handlePointerUp() {
+    if (isMovingPattern) {
+      isMovingPattern = false;
+      const dx = moveOffset.x;
+      const dy = moveOffset.y;
+      if (moveOriginalGrid) {
+        if (dx !== 0 || dy !== 0) {
+          frames[currentFrameIndex] = shiftGridData(moveOriginalGrid, dx, dy);
+          renderFramesList();
+          redrawCanvas();
+          setStatus(`Muster um ${dx}, ${dy} Felder verschoben.`);
+        } else {
+          redrawCanvas();
+          setStatus("Verschieben abgebrochen.");
+        }
+      }
+      moveStartCell = null;
+      moveOriginalGrid = null;
+      moveOffset = { x: 0, y: 0 };
+      return;
+    }
+
     if (isDrawing) {
       isDrawing = false;
       return;
@@ -1108,6 +1171,7 @@
 
   brushBtn.addEventListener("click", () => setTool("pinsel"));
   eraserBtn.addEventListener("click", () => setTool("radierer"));
+  moveBtn.addEventListener("click", () => setTool("verschieben"));
   rectBtn.addEventListener("click", () => setTool("rechteck"));
   circleBtn.addEventListener("click", () => setTool("kreis"));
   fillBtn.addEventListener("click", () => setTool("fuellen"));
