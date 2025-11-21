@@ -1756,9 +1756,17 @@
       }
 
       function exportPNG() {
+        const exportSize = Math.min(1024, Math.max(gridWidth, gridHeight) * 32);
+        const offscreen = document.createElement("canvas");
+        offscreen.width = exportSize;
+        offscreen.height = exportSize;
+        const offCtx = offscreen.getContext("2d");
+
+        drawGridToContext(offCtx, getCurrentGrid(), gridWidth, gridHeight, false, exportSize, false);
+
         const a = document.createElement("a");
         a.download = `pixely-${gridWidth}x${gridHeight}-frame${currentFrameIndex + 1}.png`;
-        a.href = canvas.toDataURL("image/png");
+        a.href = offscreen.toDataURL("image/png");
         a.click();
         setStatus("PNG exportiert.");
       }
