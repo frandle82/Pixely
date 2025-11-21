@@ -21,5 +21,5 @@ Du kannst das Projekt lokal starten, indem du die Dateien einfach in einen Ordne
 
 ```bash
 git clone https://github.com/frandle82/Pixely.git
-cd Robby
+cd Pixely
 # Dann: index.html im Browser öffnenLink:
