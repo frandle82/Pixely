@@ -776,14 +776,14 @@
         }
       }
 
-      function getGifDelayMs() {
-        const fps = Math.max(1, Math.min(24, parseInt(gifFpsInput.value, 10) || 5));
-        gifFpsInput.value = fps;
-        return Math.round(1000 / fps);
-      }
+      const DEFAULT_GIF_FPS = 5;
 
-      function updateFpsLabel() {
-        gifFpsValue.textContent = `${gifFpsInput.value} FPS`;
+      function getGifTiming() {
+        const parsed = parseInt(gifFpsInput.value, 10);
+        const fps = Math.max(1, Math.min(24, Number.isFinite(parsed) ? parsed : DEFAULT_GIF_FPS));
+        gifFpsInput.value = fps;
+        gifFpsValue.textContent = `${fps} FPS`;
+        return { fps, delayMs: Math.round(1000 / fps) };
       }
 
       function buildPaletteAndFrames(pixelsPerFrame, exportSize) {
@@ -1031,13 +1031,13 @@
         stopPreview();
         previewPlaying = true;
         togglePreviewBtn.textContent = "Vorschau stoppen";
-        const delay = getGifDelayMs();
+        const { delayMs } = getGifTiming();
         previewIndex = 0;
         renderPreviewFrame(previewIndex);
         previewTimer = setInterval(() => {
           previewIndex = (previewIndex + 1) % frames.length;
           renderPreviewFrame(previewIndex);
-        }, delay);
+        }, delayMs);
       }
 
       function refreshPreview() {
@@ -1798,8 +1798,7 @@
           return;
         }
 
-        const delay = getGifDelayMs();
-        const effectiveFps = Math.round(1000 / delay);
+        const { fps, delayMs } = getGifTiming();
         const exportSize = Math.min(512, Math.max(gridWidth, gridHeight) * 32);
         gifExporting = true;
         exportGifBtn.disabled = true;
@@ -1819,7 +1818,7 @@
         setTimeout(() => {
           try {
             const { palette, indexedFrames, transparentIndex } = buildPaletteAndFrames(pixelData, exportSize);
-            const delayCs = Math.max(1, Math.round(delay / 10));
+            const delayCs = Math.max(1, Math.round(delayMs / 10));
             const blob = encodeGif(indexedFrames, palette, exportSize, exportSize, delayCs, transparentIndex);
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
@@ -1827,7 +1826,7 @@
             a.download = `pixely-${gridWidth}x${gridHeight}.gif`;
             a.click();
             URL.revokeObjectURL(url);
-            restoreButton(`GIF exportiert (${effectiveFps} FPS).`);
+            restoreButton(`GIF exportiert (${fps} FPS).`);
           } catch (err) {
             console.error(err);
             restoreButton("GIF-Export fehlgeschlagen.");
@@ -1875,7 +1874,7 @@
       exportPngBtn.addEventListener("click", exportPNG);
       exportGifBtn.addEventListener("click", exportGIF);
       gifFpsInput.addEventListener("input", () => {
-        updateFpsLabel();
+        getGifTiming();
         if (previewPlaying) {
           startPreview();
         } else {
@@ -1913,7 +1912,7 @@
 
       // Start
       initFrames();
-      updateFpsLabel();
+      getGifTiming();
       setTool("pinsel");
       setStatus("Bereit zum Zeichnen.");
     })();
