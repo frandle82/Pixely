@@ -1772,35 +1772,15 @@
       }
 
       function gridToPixelData(grid, width, height, exportSize) {
-        const data = new Uint8ClampedArray(exportSize * exportSize * 4);
-        const cw = exportSize / width;
-        const ch = exportSize / height;
+        const offscreen = document.createElement("canvas");
+        offscreen.width = exportSize;
+        offscreen.height = exportSize;
+        const offCtx = offscreen.getContext("2d");
+        offCtx.clearRect(0, 0, exportSize, exportSize);
 
-        for (let y = 0; y < height; y++) {
-          for (let x = 0; x < width; x++) {
-            const rgb = colorToRgbArray(grid[y][x]);
-            if (!rgb) continue;
+        drawGridToContext(offCtx, grid, width, height, false, exportSize, false);
 
-            const [r, g, b] = rgb;
-            const xStart = Math.round(x * cw);
-            const xEnd = Math.round((x + 1) * cw);
-            const yStart = Math.round(y * ch);
-            const yEnd = Math.round((y + 1) * ch);
-
-            for (let py = yStart; py < yEnd; py++) {
-              const rowOffset = py * exportSize * 4;
-              for (let px = xStart; px < xEnd; px++) {
-                const idx = rowOffset + px * 4;
-                data[idx] = r;
-                data[idx + 1] = g;
-                data[idx + 2] = b;
-                data[idx + 3] = 255;
-              }
-            }
-          }
-        }
-
-        return data;
+        return offCtx.getImageData(0, 0, exportSize, exportSize).data;
       }
 
       function exportGIF() {
