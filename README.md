@@ -9,13 +9,13 @@ Ein interaktiver Editor zum Erstellen von Pixel-Grafiken ohne Werbung und in red
 - Export als Gif oder PNG möglich
 - Speichern/Laden des Bildes als JSON
 
-## 🚀 Online ausprobieren
+##  Online ausprobieren
 
 > Wird unterstützt durch **GitHub Pages**.
 
 👉 [Hier klicken, um das Projekt direkt im Browser zu starten]( https://frandle82.github.io/Pixely/)
 
-## 📦 Installation (lokal)
+## Installation (lokal)
 
 Du kannst das Projekt lokal starten, indem du die Dateien einfach in einen Ordner speicherst und `index.html` in einem Browser öffnest:
 
