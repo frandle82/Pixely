@@ -233,87 +233,33 @@
   }
 
   function encodeGif(frames, palette, width, height, delayCs, transparentIndex) {
-    const bitsPerPixel = Math.max(2, Math.ceil(Math.log2(Math.max(2, palette.length))));
-    const tableSize = 1 << bitsPerPixel;
-    const paddedPalette = palette.slice();
-    while (paddedPalette.length < tableSize) {
-      paddedPalette.push(paddedPalette[paddedPalette.length - 1]);
+    if (typeof GifWriter !== "function") {
+      throw new Error("GifWriter nicht geladen.");
     }
 
-    const bytes = [];
-    const pushStr = str => {
-      for (let i = 0; i < str.length; i++) bytes.push(str.charCodeAt(i));
-    };
-    const pushByte = b => bytes.push(b & 0xff);
-    const pushWord = w => {
-      bytes.push(w & 0xff, (w >> 8) & 0xff);
-    };
-
-    pushStr("GIF89a");
-    pushWord(width);
-    pushWord(height);
-
-    const gctSize = bitsPerPixel - 1; // pow2 -1
-    const gctFlag = 0x80;
-    const colorResolution = gctSize << 4;
-    const sortFlag = 0x00;
-    const packed = gctFlag | colorResolution | sortFlag | gctSize;
-    pushByte(packed);
-    pushByte(transparentIndex ?? 0);
-    pushByte(0);
-
-    paddedPalette.forEach(([r, g, b]) => {
-      bytes.push(r, g, b);
+    const paletteBytes = new Uint8Array(palette.length * 3);
+    palette.forEach(([r, g, b], i) => {
+      const offset = i * 3;
+      paletteBytes[offset] = r;
+      paletteBytes[offset + 1] = g;
+      paletteBytes[offset + 2] = b;
     });
 
-    // Loop forever
-    pushByte(0x21);
-    pushByte(0xff);
-    pushByte(11);
-    pushStr("NETSCAPE2.0");
-    pushByte(3);
-    pushByte(1);
-    pushWord(0);
-    pushByte(0);
+    const bufferSize = width * height * frames.length * 2 + paletteBytes.length + 1024;
+    const buffer = new Uint8Array(bufferSize);
+    const writer = new GifWriter(buffer, width, height, { loop: 0 });
 
     frames.forEach(frame => {
-      pushByte(0x21);
-      pushByte(0xf9);
-      pushByte(4);
-      const hasTransparency = transparentIndex !== null;
-      // Disposal Methode nur setzen, wenn Transparenz genutzt wird.
-      // So bleiben Frames ohne Transparenz vollständig sichtbar.
-      const disposal = transparentIndex !== null ? 0x08 : 0x00;
-      const transpFlag = hasTransparency ? 0x01 : 0x00;
-      pushByte(disposal | transpFlag);
-      pushWord(delayCs);
-      pushByte(transparentIndex ?? 0);
-      pushByte(0);
-
-      pushByte(0x2c);
-      pushWord(0);
-      pushWord(0);
-      pushWord(width);
-      pushWord(height);
-      pushByte(0);
-
-      const minCodeSize = Math.max(2, Math.min(12, bitsPerPixel));
-      pushByte(minCodeSize);
-      const lzwData = lzwEncode(minCodeSize, frame);
-      let offset = 0;
-      while (offset < lzwData.length) {
-        const blockSize = Math.min(255, lzwData.length - offset);
-        pushByte(blockSize);
-        for (let i = 0; i < blockSize; i++) {
-          pushByte(lzwData[offset + i]);
-        }
-        offset += blockSize;
-      }
-      pushByte(0);
+      writer.addFrame(0, 0, width, height, frame, {
+        palette: paletteBytes,
+        delay: delayCs,
+        disposal: transparentIndex !== null ? 2 : 0,
+        transparent: transparentIndex ?? undefined,
+      });
     });
 
-    pushByte(0x3b);
-    return new Blob([new Uint8Array(bytes)], { type: "image/gif" });
+    const end = writer.end();
+    return new Blob([buffer.subarray(0, end)], { type: "image/gif" });
   }
 
   function renderPreviewFrame(idx) {
