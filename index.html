@@ -343,7 +343,10 @@
       max-width: 100%;
       height: auto;
       image-rendering: pixelated;
-      background: #ffffff; /* nur Anzeige; Export bleibt transparent */
+      background-color: #0b0f19;
+      background-image:
+        linear-gradient(45deg, #0b0f19 25%, #111827 25%, #111827 50%, #0b0f19 50%, #0b0f19 75%, #111827 75%, #111827 100%);
+      background-size: 18px 18px;
       border-radius: 0.4rem;
     }
 
@@ -1064,11 +1067,32 @@
         gridInfo.textContent = `${gridWidth}×${gridHeight} | Frame ${currentFrameIndex + 1}/${frames.length}`;
       }
 
+      function createCheckerPattern(ctx, cell = 12) {
+        const size = Math.max(6, Math.floor(cell));
+        const patternCanvas = document.createElement("canvas");
+        patternCanvas.width = size * 2;
+        patternCanvas.height = size * 2;
+        const pctx = patternCanvas.getContext("2d");
+        pctx.fillStyle = "#0b0f19";
+        pctx.fillRect(0, 0, patternCanvas.width, patternCanvas.height);
+        pctx.fillStyle = "#111827";
+        pctx.fillRect(0, 0, size, size);
+        pctx.fillRect(size, size, size, size);
+        return ctx.createPattern(patternCanvas, "repeat");
+      }
+
+      function paintCheckerboard(ctxTarget, width, height, cell = 12) {
+        const pattern = createCheckerPattern(ctxTarget, cell);
+        ctxTarget.save();
+        ctxTarget.fillStyle = pattern;
+        ctxTarget.fillRect(0, 0, width, height);
+        ctxTarget.restore();
+      }
+
       function drawGridToContext(ctxTarget, dataGrid, width, height, withLines, canvasSize = CANVAS_SIZE) {
         const cw = canvasSize / width;
         const ch = canvasSize / height;
-
-        // Kein Hintergrund füllen -> transparent
+        paintCheckerboard(ctxTarget, canvasSize, canvasSize, Math.max(8, Math.floor(canvasSize / 16)));
 
         for (let y = 0; y < height; y++) {
           for (let x = 0; x < width; x++) {
@@ -1118,8 +1142,7 @@
         const ch = th / gridHeight;
 
         tctx.clearRect(0, 0, tw, th);
-        tctx.fillStyle = "#ffffff";
-        tctx.fillRect(0, 0, tw, th);
+        paintCheckerboard(tctx, tw, th, Math.max(4, Math.floor(tw / 8)));
 
         for (let y = 0; y < gridHeight; y++) {
           for (let x = 0; x < gridWidth; x++) {
@@ -1758,8 +1781,6 @@
           off.height = exportSize;
           const offCtx = off.getContext("2d");
           offCtx.imageSmoothingEnabled = false;
-          offCtx.fillStyle = "#ffffff";
-          offCtx.fillRect(0, 0, exportSize, exportSize);
           drawGridToContext(offCtx, grid, gridWidth, gridHeight, false, exportSize);
           return off;
         });
