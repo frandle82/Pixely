@@ -13,6 +13,7 @@
       --accent: #38bdf8;
       --accent-soft: rgba(56, 189, 248, 0.15);
       --border: #1f2937;
+      --frame-thumb: 86px;
     }
     * { box-sizing: border-box; }
 
@@ -72,7 +73,7 @@
     main {
       flex: 1;
       display: grid;
-      grid-template-columns: 180px minmax(0, 1fr) 260px;
+      grid-template-columns: auto minmax(0, 1fr) 260px;
       min-height: 440px;
       max-height: 80vh;
     }
@@ -157,6 +158,8 @@
       display: flex;
       flex-direction: column;
       gap: 0.6rem;
+      width: calc(var(--frame-thumb) + 1.8rem);
+      min-width: calc(var(--frame-thumb) + 1.8rem);
     }
 
     .frames-header-title {
@@ -174,7 +177,7 @@
       display: flex;
       flex-direction: column;
       gap: 0.45rem;
-      align-items: flex-start;
+      align-items: center;
     }
 
     .frame-item {
@@ -188,7 +191,7 @@
       background: #020617;
       cursor: pointer;
       transition: background 0.1s ease, border-color 0.1s ease;
-      align-self: flex-start;
+      align-self: center;
     }
     .frame-item.dragging {
       opacity: 0.5;
@@ -205,8 +208,8 @@
     }
     .frame-thumb-wrap {
       position: relative;
-      width: 82px;
-      height: 82px;
+      width: var(--frame-thumb);
+      height: var(--frame-thumb);
       flex-shrink: 0;
     }
     .frame-thumb {
@@ -713,6 +716,9 @@
 
       const brushSizeButtons = Array.from(document.querySelectorAll(".brush-size-btn"));
 
+      const frameThumbSize =
+        parseInt(getComputedStyle(document.documentElement).getPropertyValue("--frame-thumb"), 10) || 86;
+
       const CANVAS_SIZE = 1024;
       canvas.width = CANVAS_SIZE;
       canvas.height = CANVAS_SIZE;
@@ -872,9 +878,14 @@
             }
             nextCode = endCode + 1;
             codeSize = minCodeSize + 1;
+            prefix = char;
+            continue;
           }
         }
 
+        if (!dict.has(prefix)) {
+          prefix = prefix.slice(-1);
+        }
         writeCode(dict.get(prefix));
         writeCode(endCode);
 
@@ -886,7 +897,8 @@
       }
 
       function encodeGif(frames, palette, width, height, delayCs, transparentIndex) {
-        const tableSize = Math.max(2, 1 << Math.ceil(Math.log2(Math.max(2, palette.length))));
+        const bitsPerPixel = Math.max(2, Math.ceil(Math.log2(Math.max(2, palette.length))));
+        const tableSize = 1 << bitsPerPixel;
         const paddedPalette = palette.slice();
         while (paddedPalette.length < tableSize) {
           paddedPalette.push(paddedPalette[paddedPalette.length - 1]);
@@ -905,9 +917,9 @@
         pushWord(width);
         pushWord(height);
 
-        const gctSize = Math.ceil(Math.log2(tableSize)) - 1; // pow2 -1
+        const gctSize = bitsPerPixel - 1; // pow2 -1
         const gctFlag = 0x80;
-        const colorResolution = Math.max(0, gctSize) << 4;
+        const colorResolution = gctSize << 4;
         const sortFlag = 0x00;
         const packed = gctFlag | colorResolution | sortFlag | gctSize;
         pushByte(packed);
@@ -932,8 +944,10 @@
           pushByte(0x21);
           pushByte(0xf9);
           pushByte(4);
-          const transpFlag = transparentIndex !== null ? 0x01 : 0x00;
-          pushByte(transpFlag);
+          const hasTransparency = transparentIndex !== null;
+          const disposal = hasTransparency ? 0x04 : 0x00; // restore background to avoid carryover
+          const transpFlag = hasTransparency ? 0x01 : 0x00;
+          pushByte(disposal | transpFlag);
           pushWord(delayCs);
           pushByte(transparentIndex ?? 0);
           pushByte(0);
@@ -945,7 +959,7 @@
           pushWord(height);
           pushByte(0);
 
-          const minCodeSize = Math.max(2, Math.ceil(Math.log2(tableSize)));
+          const minCodeSize = Math.max(2, Math.min(12, bitsPerPixel));
           pushByte(minCodeSize);
           const lzwData = lzwEncode(minCodeSize, frame);
           let offset = 0;
@@ -1153,8 +1167,8 @@
           thumbWrap.className = "frame-thumb-wrap";
           const thumb = document.createElement("canvas");
           thumb.className = "frame-thumb";
-          thumb.width = 82;
-          thumb.height = 82;
+          thumb.width = frameThumbSize;
+          thumb.height = frameThumbSize;
           drawThumbnail(thumb, grid);
           thumbWrap.appendChild(thumb);
 
