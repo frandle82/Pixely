@@ -174,19 +174,21 @@
       display: flex;
       flex-direction: column;
       gap: 0.45rem;
+      align-items: flex-start;
     }
 
     .frame-item {
       position: relative;
       display: flex;
       align-items: center;
-      gap: 0.4rem;
-      padding: 0.35rem;
+      gap: 0.25rem;
+      padding: 0.2rem;
       border-radius: 0.6rem;
       border: 1px solid #111827;
       background: #020617;
       cursor: pointer;
       transition: background 0.1s ease, border-color 0.1s ease;
+      align-self: flex-start;
     }
     .frame-item.dragging {
       opacity: 0.5;
@@ -286,6 +288,7 @@
       align-items: center;
       gap: 0.35rem;
       cursor: pointer;
+      align-self: stretch;
     }
     .new-frame-btn:hover {
       background: rgba(15, 23, 42, 0.8);
@@ -775,7 +778,8 @@
       }
 
       function quantizeChannel(v) {
-        return Math.round(v / 17) * 17;
+        // 6 Stufen pro Kanal -> maximal 216 Farben + Transparenz
+        return Math.round(v / 51) * 51;
       }
 
       function buildPaletteAndFrames(pixelsPerFrame, exportSize) {
@@ -811,9 +815,10 @@
           return idxFrame;
         });
 
-        // Palette Größe auf Potenz von 2 auffüllen
+        // Palette Größe auf Potenz von 2 auffüllen (mindestens 2 Farben)
         let paletteSize = 1;
         while (paletteSize < palette.length) paletteSize <<= 1;
+        paletteSize = Math.max(2, paletteSize);
         while (palette.length < paletteSize) palette.push([0, 0, 0]);
 
         return { palette, indexedFrames, transparentIndex: needsTransparency ? 0 : null };
@@ -881,6 +886,12 @@
       }
 
       function encodeGif(frames, palette, width, height, delayCs, transparentIndex) {
+        const tableSize = Math.max(2, 1 << Math.ceil(Math.log2(Math.max(2, palette.length))));
+        const paddedPalette = palette.slice();
+        while (paddedPalette.length < tableSize) {
+          paddedPalette.push(paddedPalette[paddedPalette.length - 1]);
+        }
+
         const bytes = [];
         const pushStr = str => {
           for (let i = 0; i < str.length; i++) bytes.push(str.charCodeAt(i));
@@ -894,16 +905,16 @@
         pushWord(width);
         pushWord(height);
 
-        const gctSize = Math.max(1, Math.ceil(Math.log2(palette.length))) - 1; // pow2 -1
+        const gctSize = Math.ceil(Math.log2(tableSize)) - 1; // pow2 -1
         const gctFlag = 0x80;
-        const colorResolution = 0x70;
+        const colorResolution = Math.max(0, gctSize) << 4;
         const sortFlag = 0x00;
         const packed = gctFlag | colorResolution | sortFlag | gctSize;
         pushByte(packed);
         pushByte(transparentIndex ?? 0);
         pushByte(0);
 
-        palette.forEach(([r, g, b]) => {
+        paddedPalette.forEach(([r, g, b]) => {
           bytes.push(r, g, b);
         });
 
@@ -922,7 +933,7 @@
           pushByte(0xf9);
           pushByte(4);
           const transpFlag = transparentIndex !== null ? 0x01 : 0x00;
-          pushByte(0x08 | transpFlag);
+          pushByte(transpFlag);
           pushWord(delayCs);
           pushByte(transparentIndex ?? 0);
           pushByte(0);
@@ -934,7 +945,7 @@
           pushWord(height);
           pushByte(0);
 
-          const minCodeSize = Math.max(2, Math.ceil(Math.log2(palette.length)));
+          const minCodeSize = Math.max(2, Math.ceil(Math.log2(tableSize)));
           pushByte(minCodeSize);
           const lzwData = lzwEncode(minCodeSize, frame);
           let offset = 0;
