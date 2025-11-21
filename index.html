@@ -4,8 +4,7 @@
   <meta charset="UTF-8" />
   <title>Pixely – Pixel-Editor</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- GIF.js für animierte GIF-Erstellung -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
+  <!-- GIF-Export erfolgt clientseitig ohne externe Abhängigkeiten -->
   <style>
     :root {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -775,6 +774,185 @@
         gifFpsValue.textContent = `${gifFpsInput.value} FPS`;
       }
 
+      function quantizeChannel(v) {
+        return Math.round(v / 17) * 17;
+      }
+
+      function buildPaletteAndFrames(pixelsPerFrame, exportSize) {
+        const palette = [[0, 0, 0]]; // Index 0 = transparent
+        const colorToIndex = new Map();
+        let needsTransparency = false;
+
+        const indexedFrames = pixelsPerFrame.map(data => {
+          const idxFrame = new Uint8Array(exportSize * exportSize);
+          for (let i = 0, p = 0; i < data.length; i += 4, p++) {
+            const a = data[i + 3];
+            if (a < 8) {
+              idxFrame[p] = 0;
+              needsTransparency = true;
+              continue;
+            }
+
+            const r = quantizeChannel(data[i]);
+            const g = quantizeChannel(data[i + 1]);
+            const b = quantizeChannel(data[i + 2]);
+            const key = `${r},${g},${b}`;
+            let idx = colorToIndex.get(key);
+            if (idx === undefined) {
+              palette.push([r, g, b]);
+              idx = palette.length - 1;
+              colorToIndex.set(key, idx);
+              if (palette.length > 256) {
+                throw new Error("Zu viele Farben für GIF-Palette (max. 255 + Transparenz).");
+              }
+            }
+            idxFrame[p] = idx;
+          }
+          return idxFrame;
+        });
+
+        // Palette Größe auf Potenz von 2 auffüllen
+        let paletteSize = 1;
+        while (paletteSize < palette.length) paletteSize <<= 1;
+        while (palette.length < paletteSize) palette.push([0, 0, 0]);
+
+        return { palette, indexedFrames, transparentIndex: needsTransparency ? 0 : null };
+      }
+
+      function lzwEncode(minCodeSize, indexStream) {
+        const clearCode = 1 << minCodeSize;
+        const endCode = clearCode + 1;
+        let nextCode = endCode + 1;
+        let codeSize = minCodeSize + 1;
+        const dict = new Map();
+        for (let i = 0; i < clearCode; i++) {
+          dict.set(String.fromCharCode(i), i);
+        }
+
+        const output = [];
+        let bitBuffer = 0;
+        let bitLength = 0;
+
+        function writeCode(code) {
+          bitBuffer |= code << bitLength;
+          bitLength += codeSize;
+          while (bitLength >= 8) {
+            output.push(bitBuffer & 0xff);
+            bitBuffer >>= 8;
+            bitLength -= 8;
+          }
+        }
+
+        writeCode(clearCode);
+        let prefix = String.fromCharCode(indexStream[0]);
+
+        for (let i = 1; i < indexStream.length; i++) {
+          const char = String.fromCharCode(indexStream[i]);
+          const combined = prefix + char;
+          if (dict.has(combined)) {
+            prefix = combined;
+          } else {
+            writeCode(dict.get(prefix));
+            dict.set(combined, nextCode++);
+            prefix = char;
+            if (nextCode === 1 << codeSize && codeSize < 12) {
+              codeSize++;
+            }
+          }
+          if (nextCode >= 4095) {
+            writeCode(clearCode);
+            dict.clear();
+            for (let k = 0; k < clearCode; k++) {
+              dict.set(String.fromCharCode(k), k);
+            }
+            nextCode = endCode + 1;
+            codeSize = minCodeSize + 1;
+          }
+        }
+
+        writeCode(dict.get(prefix));
+        writeCode(endCode);
+
+        if (bitLength > 0) {
+          output.push(bitBuffer & 0xff);
+        }
+
+        return output;
+      }
+
+      function encodeGif(frames, palette, width, height, delayCs, transparentIndex) {
+        const bytes = [];
+        const pushStr = str => {
+          for (let i = 0; i < str.length; i++) bytes.push(str.charCodeAt(i));
+        };
+        const pushByte = b => bytes.push(b & 0xff);
+        const pushWord = w => {
+          bytes.push(w & 0xff, (w >> 8) & 0xff);
+        };
+
+        pushStr("GIF89a");
+        pushWord(width);
+        pushWord(height);
+
+        const gctSize = Math.max(1, Math.ceil(Math.log2(palette.length))) - 1; // pow2 -1
+        const gctFlag = 0x80;
+        const colorResolution = 0x70;
+        const sortFlag = 0x00;
+        const packed = gctFlag | colorResolution | sortFlag | gctSize;
+        pushByte(packed);
+        pushByte(transparentIndex ?? 0);
+        pushByte(0);
+
+        palette.forEach(([r, g, b]) => {
+          bytes.push(r, g, b);
+        });
+
+        // Loop forever
+        pushByte(0x21);
+        pushByte(0xff);
+        pushByte(11);
+        pushStr("NETSCAPE2.0");
+        pushByte(3);
+        pushByte(1);
+        pushWord(0);
+        pushByte(0);
+
+        frames.forEach(frame => {
+          pushByte(0x21);
+          pushByte(0xf9);
+          pushByte(4);
+          const transpFlag = transparentIndex !== null ? 0x01 : 0x00;
+          pushByte(0x08 | transpFlag);
+          pushWord(delayCs);
+          pushByte(transparentIndex ?? 0);
+          pushByte(0);
+
+          pushByte(0x2c);
+          pushWord(0);
+          pushWord(0);
+          pushWord(width);
+          pushWord(height);
+          pushByte(0);
+
+          const minCodeSize = Math.max(2, Math.ceil(Math.log2(palette.length)));
+          pushByte(minCodeSize);
+          const lzwData = lzwEncode(minCodeSize, frame);
+          let offset = 0;
+          while (offset < lzwData.length) {
+            const blockSize = Math.min(255, lzwData.length - offset);
+            pushByte(blockSize);
+            for (let i = 0; i < blockSize; i++) {
+              pushByte(lzwData[offset + i]);
+            }
+            offset += blockSize;
+          }
+          pushByte(0);
+        });
+
+        pushByte(0x3b);
+        return new Blob([new Uint8Array(bytes)], { type: "image/gif" });
+      }
+
       function renderPreviewFrame(idx) {
         if (!frames.length) return;
         previewIndex = Math.max(0, Math.min(idx, frames.length - 1));
@@ -1505,10 +1683,6 @@
 
       function exportGIF() {
         if (gifExporting) return;
-        if (typeof GIF === "undefined") {
-          setStatus("GIF-Unterstützung nicht verfügbar.");
-          return;
-        }
         if (!frames.length) {
           setStatus("Keine Frames vorhanden.");
           return;
@@ -1521,44 +1695,31 @@
         exportGifBtn.disabled = true;
         exportGifBtn.textContent = "GIF wird erstellt …";
 
-        let timeoutId = null;
-        const restoreButton = (message) => {
+        const restoreButton = message => {
           gifExporting = false;
           exportGifBtn.disabled = false;
           exportGifBtn.textContent = "GIF";
-          if (timeoutId) {
-            clearTimeout(timeoutId);
-          }
           if (message) {
             setStatus(message);
           }
         };
 
-        try {
-          const gif = new GIF({
-            workers: 1,
-            quality: 10,
-            width: exportSize,
-            height: exportSize,
-            workerScript: "https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js",
-            repeat: 0,
-          });
+        const offCanvases = frames.map(grid => {
+          const off = document.createElement("canvas");
+          off.width = exportSize;
+          off.height = exportSize;
+          const offCtx = off.getContext("2d");
+          offCtx.clearRect(0, 0, exportSize, exportSize);
+          drawGridToContext(offCtx, grid, gridWidth, gridHeight, false, exportSize);
+          return off;
+        });
 
-          frames.forEach(grid => {
-            const off = document.createElement("canvas");
-            off.width = exportSize;
-            off.height = exportSize;
-            const offCtx = off.getContext("2d");
-            offCtx.clearRect(0, 0, exportSize, exportSize);
-            drawGridToContext(offCtx, grid, gridWidth, gridHeight, false, exportSize);
-            gif.addFrame(off, { delay, copy: true });
-          });
-
-          gif.on("progress", function (p) {
-            setStatus(`GIF wird erstellt … ${Math.round(p * 100)}%`);
-          });
-
-          gif.on("finished", function (blob) {
+        setTimeout(() => {
+          try {
+            const pixelData = offCanvases.map(off => off.getContext("2d").getImageData(0, 0, exportSize, exportSize).data);
+            const { palette, indexedFrames, transparentIndex } = buildPaletteAndFrames(pixelData, exportSize);
+            const delayCs = Math.max(1, Math.round(delay / 10));
+            const blob = encodeGif(indexedFrames, palette, exportSize, exportSize, delayCs, transparentIndex);
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
@@ -1566,24 +1727,11 @@
             a.click();
             URL.revokeObjectURL(url);
             restoreButton(`GIF exportiert (${effectiveFps} FPS).`);
-          });
-
-          gif.on("error", function () {
+          } catch (err) {
+            console.error(err);
             restoreButton("GIF-Export fehlgeschlagen.");
-          });
-
-          timeoutId = setTimeout(() => {
-            if (!gifExporting) return;
-            gif.abort && gif.abort();
-            restoreButton("GIF-Export fehlgeschlagen.");
-          }, 15000);
-
-          gif.render();
-          setStatus("GIF wird erstellt …");
-        } catch (err) {
-          console.error(err);
-          restoreButton("GIF-Export fehlgeschlagen.");
-        }
+          }
+        }, 20);
       }
 
       // Events
