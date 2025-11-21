@@ -102,14 +102,12 @@
     return { fps, delayMs: Math.round(1000 / fps) };
   }
 
-  function buildPaletteAndFramesFromGrids(frameGrids, width, height, exportSize) {
+  function buildPaletteAndFramesFromRgba(rgbaFrames, exportSize) {
     const colors = [];
     const colorToIndex = new Map();
     let needsTransparency = false;
 
-    function ensureColorIndex(hex) {
-      const rgb = colorToRgbArray(hex);
-      if (!rgb) return null;
+    function ensureColorIndex(rgb) {
       const key = rgb.join(",");
       let idx = colorToIndex.get(key);
       if (idx === undefined) {
@@ -120,22 +118,19 @@
       return idx;
     }
 
-    const indexedFrames = frameGrids.map(grid => {
+    const indexedFrames = rgbaFrames.map(buffer => {
       const frame = new Uint8Array(exportSize * exportSize);
-      for (let y = 0; y < exportSize; y++) {
-        const srcY = Math.min(height - 1, Math.floor((y / exportSize) * height));
-        for (let x = 0; x < exportSize; x++) {
-          const srcX = Math.min(width - 1, Math.floor((x / exportSize) * width));
-          const color = grid[srcY][srcX];
-          const pos = y * exportSize + x;
-          if (!color) {
-            frame[pos] = 0xff;
-            needsTransparency = true;
-          } else {
-            const idx = ensureColorIndex(color);
-            frame[pos] = idx ?? 0xff;
-            if (idx === null) needsTransparency = true;
-          }
+      for (let i = 0, p = 0; i < buffer.length; i += 4, p++) {
+        const r = buffer[i];
+        const g = buffer[i + 1];
+        const b = buffer[i + 2];
+        const a = buffer[i + 3];
+        if (a < 16) {
+          frame[p] = 0xff;
+          needsTransparency = true;
+        } else {
+          const idx = ensureColorIndex([r, g, b]);
+          frame[p] = idx;
         }
       }
       return frame;
@@ -146,7 +141,7 @@
       throw new Error(`Zu viele Farben für GIF-Palette (max. ${maxColors}${needsTransparency ? " mit Transparenz" : ""}).`);
     }
 
-    let palette = colors;
+    let palette = colors.slice();
     let transparentIndex = null;
 
     if (needsTransparency) {
@@ -1137,10 +1132,9 @@
 
     setTimeout(() => {
       try {
-        const { palette, indexedFrames, transparentIndex } = buildPaletteAndFramesFromGrids(
-          frames,
-          gridWidth,
-          gridHeight,
+        const rgbaFrames = frames.map(grid => gridToPixelData(grid, gridWidth, gridHeight, exportSize));
+        const { palette, indexedFrames, transparentIndex } = buildPaletteAndFramesFromRgba(
+          rgbaFrames,
           exportSize
         );
         const delayCs = Math.max(1, Math.round(delayMs / 10));
@@ -1155,8 +1149,8 @@
       } catch (err) {
         console.error(err);
         restoreButton("GIF-Export fehlgeschlagen.");
-        }
-      }, 20);
+      }
+    }, 20);
   }
 
   window.pixelyApp = {
