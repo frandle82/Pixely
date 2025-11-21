@@ -1089,10 +1089,22 @@
         ctxTarget.restore();
       }
 
-      function drawGridToContext(ctxTarget, dataGrid, width, height, withLines, canvasSize = CANVAS_SIZE) {
+      function drawGridToContext(
+        ctxTarget,
+        dataGrid,
+        width,
+        height,
+        withLines,
+        canvasSize = CANVAS_SIZE,
+        withBackground = true
+      ) {
         const cw = canvasSize / width;
         const ch = canvasSize / height;
-        paintCheckerboard(ctxTarget, canvasSize, canvasSize, Math.max(8, Math.floor(canvasSize / 16)));
+        if (withBackground) {
+          paintCheckerboard(ctxTarget, canvasSize, canvasSize, Math.max(8, Math.floor(canvasSize / 16)));
+        } else {
+          ctxTarget.clearRect(0, 0, canvasSize, canvasSize);
+        }
 
         for (let y = 0; y < height; y++) {
           for (let x = 0; x < width; x++) {
@@ -1781,7 +1793,7 @@
           off.height = exportSize;
           const offCtx = off.getContext("2d");
           offCtx.imageSmoothingEnabled = false;
-          drawGridToContext(offCtx, grid, gridWidth, gridHeight, false, exportSize);
+          drawGridToContext(offCtx, grid, gridWidth, gridHeight, false, exportSize, false);
           return off;
         });
 
