@@ -15,6 +15,7 @@
   const colorPicker = document.getElementById("colorPicker");
   const brushBtn = document.getElementById("brushBtn");
   const eraserBtn = document.getElementById("eraserBtn");
+  const pipetteBtn = document.getElementById("pipetteBtn");
   const rectBtn = document.getElementById("rectBtn");
   const circleBtn = document.getElementById("circleBtn");
   const fillBtn = document.getElementById("fillBtn");
@@ -24,6 +25,9 @@
   const saveBtn = document.getElementById("saveBtn");
   const loadBtn = document.getElementById("loadBtn");
   const loadInput = document.getElementById("loadInput");
+  const backgroundBtn = document.getElementById("backgroundBtn");
+  const backgroundInput = document.getElementById("backgroundInput");
+  const clearBackgroundBtn = document.getElementById("clearBackgroundBtn");
   const clearBtn = document.getElementById("clearBtn");
   const exportPngBtn = document.getElementById("exportPngBtn");
   const exportGifBtn = document.getElementById("exportGifBtn");
@@ -59,6 +63,8 @@
   let currentColor = colorPicker.value;
   let brushSize = 1; // 1..4 -> 1x1..4x4
   let mirrorMode = false;
+  let backgroundCanvas = null;
+  let backgroundCtx = null;
 
   let isDrawing = false;
   let isShapeDrawing = false;
@@ -80,6 +86,7 @@
   const toolButtons = {
     pinsel: brushBtn,
     radierer: eraserBtn,
+    pipette: pipetteBtn,
     rechteck: rectBtn,
     kreis: circleBtn,
     fuellen: fillBtn,
@@ -99,6 +106,16 @@
   }
 
   const DEFAULT_GIF_FPS = 5;
+
+  const previewPlayIcon = '<span class="mdi mdi-play icon" aria-hidden="true"></span>';
+  const previewStopIcon = '<span class="mdi mdi-stop icon" aria-hidden="true"></span>';
+
+  function setPreviewButtonState(isPlaying) {
+    const label = isPlaying ? "Vorschau stoppen" : "Vorschau abspielen";
+    togglePreviewBtn.innerHTML = isPlaying ? previewStopIcon : previewPlayIcon;
+    togglePreviewBtn.setAttribute("title", label);
+    togglePreviewBtn.setAttribute("aria-label", label);
+  }
 
   function getGifTiming() {
     const parsed = parseInt(gifFpsInput.value, 10);
@@ -281,14 +298,14 @@
       previewTimer = null;
     }
     previewPlaying = false;
-    togglePreviewBtn.textContent = "Vorschau abspielen";
+    setPreviewButtonState(false);
   }
 
   function startPreview() {
     if (!frames.length) return;
     stopPreview();
     previewPlaying = true;
-    togglePreviewBtn.textContent = "Vorschau stoppen";
+    setPreviewButtonState(true);
     const { delayMs } = getGifTiming();
     previewIndex = 0;
     renderPreviewFrame(previewIndex);
@@ -306,6 +323,29 @@
 
   function createEmptyGrid(width, height) {
     return Array.from({ length: height }, () => Array(width).fill(null));
+  }
+
+  function resetBackgroundLayer() {
+    backgroundCanvas = null;
+    backgroundCtx = null;
+  }
+
+  function buildBackgroundLayer(img) {
+    const layer = document.createElement("canvas");
+    layer.width = CANVAS_SIZE;
+    layer.height = CANVAS_SIZE;
+    const layerCtx = layer.getContext("2d");
+    layerCtx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+    const scale = Math.max(CANVAS_SIZE / img.width, CANVAS_SIZE / img.height);
+    const drawWidth = img.width * scale;
+    const drawHeight = img.height * scale;
+    const dx = (CANVAS_SIZE - drawWidth) / 2;
+    const dy = (CANVAS_SIZE - drawHeight) / 2;
+    layerCtx.drawImage(img, dx, dy, drawWidth, drawHeight);
+
+    backgroundCanvas = layer;
+    backgroundCtx = layerCtx;
   }
 
   function shiftGridData(grid, dx, dy) {
@@ -369,12 +409,22 @@
     height,
     withLines,
     canvasSize = CANVAS_SIZE,
-    withBackground = true
+    withBackground = true,
+    backgroundSource = backgroundCanvas
   ) {
     const cw = canvasSize / width;
     const ch = canvasSize / height;
     if (withBackground) {
-      paintCheckerboard(ctxTarget, canvasSize, canvasSize, Math.max(8, Math.floor(canvasSize / 16)));
+      if (backgroundSource) {
+        ctxTarget.drawImage(backgroundSource, 0, 0, canvasSize, canvasSize);
+      } else {
+        paintCheckerboard(
+          ctxTarget,
+          canvasSize,
+          canvasSize,
+          Math.max(8, Math.floor(canvasSize / 16))
+        );
+      }
     } else {
       ctxTarget.clearRect(0, 0, canvasSize, canvasSize);
     }
@@ -768,6 +818,43 @@
     reader.readAsText(file);
   }
 
+  function loadBackgroundFromFile(file) {
+    if (!file || !/^image\/(png|jpe?g)$/i.test(file.type)) {
+      setStatus("Bitte PNG- oder JPEG-Datei wählen.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        buildBackgroundLayer(img);
+        redrawCanvas();
+        setStatus("Hintergrundbild geladen.");
+      };
+      img.onerror = () => {
+        resetBackgroundLayer();
+        setStatus("Hintergrund konnte nicht geladen werden.");
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function getCanvasPointFromEvent(ev) {
+    const rect = canvas.getBoundingClientRect();
+    const point =
+      (ev.touches && ev.touches[0]) ||
+      (ev.changedTouches && ev.changedTouches[0]) ||
+      ev;
+    const clientX = point.clientX;
+    const clientY = point.clientY;
+    const x = ((clientX - rect.left) / rect.width) * CANVAS_SIZE;
+    const y = ((clientY - rect.top) / rect.height) * CANVAS_SIZE;
+    if (x < 0 || y < 0 || x > CANVAS_SIZE || y > CANVAS_SIZE) return null;
+    return { x, y };
+  }
+
   function getCellFromEvent(ev) {
     const rect = canvas.getBoundingClientRect();
     const point =
@@ -780,6 +867,16 @@
     const y = Math.floor(((clientY - rect.top) / rect.height) * gridHeight);
     if (x < 0 || x >= gridWidth || y < 0 || y >= gridHeight) return null;
     return { x, y };
+  }
+
+  function pickColorFromBackground(point) {
+    if (!backgroundCtx || !point) return null;
+    const data = backgroundCtx.getImageData(Math.floor(point.x), Math.floor(point.y), 1, 1).data;
+    const [r, g, b, a] = data;
+    if (a === 0) return null;
+    return `#${r.toString(16).padStart(2, "0")}${g
+      .toString(16)
+      .padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
   }
 
   function paintCellAt(grid, x, y, color) {
@@ -972,6 +1069,19 @@
       moveOffset = { x: 0, y: 0 };
       moveOriginalGrid = getCurrentGrid().map(row => row.slice());
       setStatus("Muster verschieben: Ziehe, um das Motiv neu zu positionieren.");
+     } else if (currentTool === "pipette") {
+      const point = getCanvasPointFromEvent(ev);
+      const bgColor = pickColorFromBackground(point);
+      const grid = getCurrentGrid();
+      const cellColor = grid[cell.y][cell.x];
+      const picked = bgColor || cellColor;
+      if (picked) {
+        currentColor = picked;
+        colorPicker.value = picked;
+        setStatus(`Farbe übernommen: ${picked}`);
+      } else {
+        setStatus("Keine Farbe an dieser Position gefunden.");
+      }
     } else if (currentTool === "pinsel" || currentTool === "radierer") {
       isDrawing = true;
       paintBrush(cell);
@@ -1154,6 +1264,7 @@
   brushBtn.addEventListener("click", () => setTool("pinsel"));
   eraserBtn.addEventListener("click", () => setTool("radierer"));
   moveBtn.addEventListener("click", () => setTool("verschieben"));
+  pipetteBtn.addEventListener("click", () => setTool("pipette"));
   rectBtn.addEventListener("click", () => setTool("rechteck"));
   circleBtn.addEventListener("click", () => setTool("kreis"));
   fillBtn.addEventListener("click", () => setTool("fuellen"));
@@ -1181,6 +1292,18 @@
     loadInput.value = "";
   });
 
+  backgroundBtn.addEventListener("click", () => backgroundInput.click());
+  backgroundInput.addEventListener("change", e => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    loadBackgroundFromFile(file);
+    backgroundInput.value = "";
+  });
+  clearBackgroundBtn.addEventListener("click", () => {
+    resetBackgroundLayer();
+    redrawCanvas();
+    setStatus("Standardhintergrund aktiv.");
+  });
   clearBtn.addEventListener("click", clearCurrentFrame);
 
   exportPngBtn.addEventListener("click", exportPNG);
@@ -1225,6 +1348,7 @@
   // Start
   initFrames();
   getGifTiming();
+  setPreviewButtonState(previewPlaying);
   setTool("pinsel");
   setStatus("Bereit zum Zeichnen.");
 })();
