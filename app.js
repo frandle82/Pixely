@@ -518,10 +518,7 @@
           const dupBtn = document.createElement("button");
           dupBtn.title = "Frame duplizieren";
           dupBtn.innerHTML = `
-            <svg viewBox="0 0 24 24" class="icon">
-              <rect x="6" y="6" width="11" height="11" rx="1.5"></rect>
-              <rect x="9" y="9" width="11" height="11" rx="1.5"></rect>
-            </svg>`;
+            <span class="mdi mdi-content-duplicate icon" aria-hidden="true"></span>`;
           dupBtn.classList.add("bottom-right");
           dupBtn.addEventListener("click", (e) => {
             e.stopPropagation();
@@ -533,10 +530,7 @@
           const copyBtn = document.createElement("button");
           copyBtn.title = "Frame kopieren";
           copyBtn.innerHTML = `
-            <svg viewBox="0 0 24 24" class="icon">
-              <rect x="6" y="6" width="10" height="10" rx="1.5"></rect>
-              <rect x="10" y="10" width="8" height="8" rx="1.5"></rect>
-            </svg>`;
+            <span class="mdi mdi-content-copy icon" aria-hidden="true"></span>`;
           copyBtn.classList.add("bottom-right");
           copyBtn.addEventListener("click", (e) => {
             e.stopPropagation();
@@ -546,12 +540,7 @@
           const delBtn = document.createElement("button");
           delBtn.title = "Frame löschen";
           delBtn.innerHTML = `
-            <svg viewBox="0 0 24 24" class="icon">
-              <polyline points="9 4 10 3 14 3 15 4"></polyline>
-              <rect x="6" y="5" width="12" height="15" rx="1.5"></rect>
-              <line x1="10" y1="9" x2="10" y2="17"></line>
-              <line x1="14" y1="9" x2="14" y2="17"></line>
-            </svg>`;
+            <span class="mdi mdi-trash-can-outline icon" aria-hidden="true"></span>`;
           delBtn.classList.add("top-left");
           delBtn.addEventListener("click", (e) => {
             e.stopPropagation();
@@ -561,14 +550,7 @@
           const moveBtn = document.createElement("button");
           moveBtn.title = "Frame verschieben";
           moveBtn.innerHTML = `
-            <svg viewBox="0 0 24 24" class="icon">
-              <line x1="12" y1="4" x2="12" y2="20"></line>
-              <line x1="4" y1="12" x2="20" y2="12"></line>
-              <polyline points="9 7 12 4 15 7"></polyline>
-              <polyline points="9 17 12 20 15 17"></polyline>
-              <polyline points="7 9 4 12 7 15"></polyline>
-              <polyline points="17 9 20 12 17 15"></polyline>
-            </svg>`;
+            <span class="mdi mdi-cursor-move icon" aria-hidden="true"></span>`;
           const canMoveLeft = idx > 0;
           const canMoveRight = idx < total - 1;
           moveBtn.disabled = !(canMoveLeft || canMoveRight);
