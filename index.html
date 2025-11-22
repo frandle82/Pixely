@@ -4,6 +4,10 @@
   <meta charset="UTF-8" />
   <title>Pixely – Pixel-Editor</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css"
+  />
   <!-- GIF-Export erfolgt clientseitig ohne externe Abhängigkeiten -->
   <style>
     :root {
@@ -80,7 +84,7 @@
 
     @media (max-width: 900px) {
       main {
-        grid-template-columns: 150px minmax(0, 1fr);
+        grid-template-columns: 200px minmax(0, 1fr);
         grid-template-rows: minmax(0, 1fr) auto;
         grid-template-areas:
           "frames canvas"
@@ -136,11 +140,11 @@
       width: 18px;
       height: 18px;
       color: #f9fafb;
-      stroke: currentColor;
-      fill: none;
-      stroke-width: 1.9;
-      stroke-linecap: round;
-      stroke-linejoin: round;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 19px;
+      line-height: 1;
     }
 
     .pill {
@@ -270,15 +274,30 @@
       padding: 0;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
     }
-    .frame-actions svg {
-      width: 15px;
-      height: 15px;
-      stroke-width: 1.6;
+    .frame-actions .icon {
+      width: 16px;
+      font-size: 17px;
     }
-    .frame-actions .top-left { justify-self: start; align-self: start; }
-    .frame-actions .top-right { justify-self: end; align-self: start; }
-    .frame-actions .bottom-left { justify-self: start; align-self: end; }
-    .frame-actions .bottom-right { justify-self: end; align-self: end; }
+    .frame-actions .top-left { 
+        position: absolute;
+        top: -4px;
+        left: -4px;
+      }
+    .frame-actions .top-right { 
+        position: absolute;
+        top: -4px;
+        right: -4px;
+      }
+    .frame-actions .bottom-left { 
+        position: absolute;
+        bottom: -4px;
+        left: -4px;
+     }
+    .frame-actions .bottom-right { 
+        position: absolute;
+        bottom: -4px;
+        right: -4px;
+     }
 
     .new-frame-btn {
       margin-top: 0.4rem;
@@ -290,7 +309,7 @@
       font-size: 0.8rem;
       display: flex;
       align-items: center;
-      gap: 0.35rem;
+      gap: 0.25rem;
       cursor: pointer;
       align-self: stretch;
     }
@@ -299,14 +318,13 @@
       border-color: #6b7280;
     }
     .new-frame-btn-icon {
-      width: 18px;
-      height: 18px;
+      width: 17px;
+      height: 17px;
       border-radius: 999px;
-      border: 1px solid #6b7280;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 0.9rem;
+      font-size: 2.0rem;
     }
 
     /* Canvas Mitte */
@@ -314,15 +332,15 @@
       padding: 0.8rem 0.6rem;
       display: flex;
       flex-direction: column;
-      gap: 0.4rem;
+      gap: 0.5rem;
       background: radial-gradient(circle at top, #020617 0, #020617 45%, #020617 100%);
     }
 
     .canvas-shell {
       flex: 1;
       background: radial-gradient(circle at top left, #020617 0, #030712 40%, #020617 100%);
-      border-radius: 0.75rem;
-      border: 1px solid #111827;
+      border-radius: 0.35rem;
+      border: 3px solid #111827;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -332,8 +350,8 @@
 
     .canvas-container {
       background: #111827;
-      border-radius: 0.75rem;
-      padding: 0.45rem;
+      border-radius: 0.45rem;
+      padding: 0.35rem;
       box-shadow:
         0 0 0 1px rgba(15, 23, 42, 0.9),
         0 16px 36px rgba(0, 0, 0, 0.9);
@@ -348,7 +366,7 @@
       background-image:
         linear-gradient(45deg, #0b0f19 25%, #111827 25%, #111827 50%, #0b0f19 50%, #0b0f19 75%, #111827 75%, #111827 100%);
       background-size: 18px 18px;
-      border-radius: 0.4rem;
+      border-radius: 0;
     }
 
     .status-bar {
@@ -465,18 +483,18 @@
       justify-content: center;
     }
     .brush-size-icon {
-      width: 12px;
-      height: 12px;
+      width: 8px;
+      height: 8px;
       background: #e5e7eb;
       border-radius: 2px;
     }
     .brush-size-btn[data-size="2"] .brush-size-icon {
-      width: 16px;
-      height: 16px;
+      width: 12px;
+      height: 12px;
     }
     .brush-size-btn[data-size="3"] .brush-size-icon {
-      width: 18px;
-      height: 18px;
+      width: 16px;
+      height: 16px;
     }
     .brush-size-btn[data-size="4"] .brush-size-icon {
       width: 20px;
@@ -559,11 +577,7 @@
             <label for="customHeight">H</label>
             <input id="customHeight" type="number" min="5" max="64" value="8" />
             <button id="applySizeBtn" class="btn-icon btn-ghost" title="Rastergröße übernehmen">
-              <svg viewBox="0 0 24 24" class="icon">
-                <rect x="4" y="4" width="16" height="16" rx="1.5"></rect>
-                <path d="M4 10h16"></path>
-                <path d="M10 4v16"></path>
-              </svg>
+              <span class="mdi mdi-grid icon" aria-hidden="true"></span>
             </button>
           </div>
         </div>
@@ -575,62 +589,33 @@
             <input id="colorPicker" type="color" value="#ff0055" title="Farbe wählen" />
             <!-- Stift (Pinsel) -->
             <button id="brushBtn" class="btn-icon active" title="Stift">
-              <svg viewBox="0 0 24 24" class="icon">
-                <path d="M4 20c2-4 8-12 11.5-15.5a1.8 1.8 0 0 1 2.5 0L20 6.5a1.8 1.8 0 0 1 0 2.5C16.6 12.4 8 18 4 20z"></path>
-                <path d="M12 8l4 4"></path>
-              </svg>
+              <span class="mdi mdi-pencil icon" aria-hidden="true"></span>
             </button>
             <!-- Radiergummi -->
             <button id="eraserBtn" class="btn-icon" title="Radierer">
-              <svg viewBox="0 0 24 24" class="icon">
-                <path d="M6 16l7-7 4 4-7 7H6z"></path>
-                <path d="M13 9l2.5-2.5a2 2 0 0 1 2.8 0L20 8.2a2 2 0 0 1 0 2.8L18 13"></path>
-                <path d="M5 21h9"></path>
-              </svg>
+              <span class="mdi mdi-eraser icon" aria-hidden="true"></span>
             </button>
             <!-- Muster verschieben -->
             <button id="moveBtn" class="btn-icon" title="Muster verschieben">
-              <svg viewBox="0 0 24 24" class="icon">
-                <path d="M12 4l2.5 2.5L12 9 9.5 6.5 12 4z"></path>
-                <path d="M12 20l-2.5-2.5L12 15l2.5 2.5L12 20z"></path>
-                <path d="M4 12l2.5-2.5L9 12l-2.5 2.5L4 12z"></path>
-                <path d="M20 12l-2.5 2.5L15 12l2.5-2.5L20 12z"></path>
-                <path d="M9 9l6 6"></path>
-                <path d="M15 9l-6 6"></path>
-              </svg>
+              <span class="mdi mdi-cursor-move icon" aria-hidden="true"></span>
             </button>
           </div>
           <div class="row">
             <!-- Rechteck (Umriss) -->
             <button id="rectBtn" class="btn-icon" title="Rechteck (Umriss)">
-              <svg viewBox="0 0 24 24" class="icon">
-                <rect x="4.5" y="6" width="15" height="12" rx="1.5"></rect>
-                <path d="M8 6v12"></path>
-                <path d="M16 6v12"></path>
-              </svg>
+              <span class="mdi mdi-rectangle-outline icon" aria-hidden="true"></span>
             </button>
             <!-- Kreis/Oval (Umriss) -->
             <button id="circleBtn" class="btn-icon" title="Kreis/Oval (Umriss)">
-              <svg viewBox="0 0 24 24" class="icon">
-                <circle cx="12" cy="12" r="6.5"></circle>
-                <circle cx="12" cy="12" r="2"></circle>
-              </svg>
+              <span class="mdi mdi-circle-outline icon" aria-hidden="true"></span>
             </button>
             <!-- Füllen (Farbeimer) -->
             <button id="fillBtn" class="btn-icon" title="Fläche füllen">
-              <svg viewBox="0 0 24 24" class="icon">
-                <path d="M5 11l6-6 6 6-6 6-6-6z"></path>
-                <path d="M5 11h14"></path>
-                <path d="M18.5 15.5a2.5 2.5 0 1 0 5 0c0-1.5-1.3-2.7-2.5-2.7S18.5 14 18.5 15.5z"></path>
-              </svg>
+              <span class="mdi mdi-format-color-fill icon" aria-hidden="true"></span>
             </button>
             <!-- Vertikale Spiegelung -->
             <button id="mirrorToggleBtn" class="btn toggle-btn" title="Vertikale Spiegelung an/aus">
-              <svg viewBox="0 0 24 24" class="icon">
-                <line x1="12" y1="3.5" x2="12" y2="20.5"></line>
-                <polyline points="8 7 4.5 10.5 8 14"></polyline>
-                <polyline points="16 7 19.5 10.5 16 14"></polyline>
-              </svg>
+              <span class="mdi mdi-flip-vertical icon" aria-hidden="true"></span>
             </button>
           </div>
           <div class="row">
@@ -662,15 +647,7 @@
             </button>
             <!-- Raster leeren -->
             <button id="clearBtn" class="btn btn-ghost" title="Aktuellen Frame vollständig leeren">
-              <svg viewBox="0 0 24 24" class="icon">
-                <rect x="4" y="4" width="16" height="16" rx="1.5"></rect>
-                <path d="M6 6h4"></path>
-                <path d="M6 10h2"></path>
-                <path d="M6 14h3"></path>
-                <path d="M6 18h2"></path>
-                <path d="M18 6l-5 5"></path>
-                <path d="M15 6h3v3"></path>
-              </svg>
+              <span class="mdi mdi-trash-can-outline icon" aria-hidden="true"></span>
             </button>
             <input id="loadInput" type="file" accept="application/json" style="display:none" />
           </div>
