@@ -60,6 +60,13 @@
       margin: 0;
     }
 
+    .header-icon {
+      width: 22px;
+      height: 22px;
+      display: inline-block;
+      object-fit: contain;
+    }
+
     .logo-dot {
       width: 10px;
       height: 10px;
@@ -340,7 +347,7 @@
       flex: 1;
       background: radial-gradient(circle at top left, #020617 0, #030712 40%, #020617 100%);
       border-radius: 0.35rem;
-      border: 3px solid #111827;
+      border: 2px solid #111827;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -421,9 +428,9 @@
 
     #gifPreviewCanvas {
       width: 100%;
-      max-width: 220px;
+      max-width: 200px;
       aspect-ratio: 1 / 1;
-      border-radius: 0.5rem;
+      border-radius: 0;
       background: #0b1221;
       border: 1px dashed #1f2937;
     }
@@ -520,7 +527,10 @@
 <body>
   <div class="app">
     <header>
-      <h1><span class="logo-dot"></span>Pixely</h1>
+      <h1>
+        <img src="icons/pixely-logo.png" alt="Pixely-Logo" class="header-icon" />
+          Pixely
+      </h1>
       <div class="header-actions">
         <button id="exportPngBtn" class="btn btn-primary" title="Aktuellen Frame als PNG exportieren">
           PNG
@@ -534,7 +544,7 @@
     <main>
       <!-- FRAMES LINKS -->
       <aside class="frames-panel">
-        <div class="frames-header-title">Frames</div>
+        <div class="frames-header-title">Bilder</div>
         <div id="framesList"></div>
         <button id="newFrameBtn" class="new-frame-btn" type="button">
           <span class="new-frame-btn-icon">+</span>
@@ -586,7 +596,24 @@
         <div class="section">
           <div class="section-title">Zeichnen</div>
           <div class="row">
-            <input id="colorPicker" type="color" value="#ff0055" title="Farbe wählen" />
+              <input id="colorPicker" type="color" value="#ff0055" title="Farbe wählen" />
+              <div class="row">
+                <label>Stiftgröße</label>
+                <button data-size="1" class="btn brush-size-btn active" title="1×1">
+                  <div class="brush-size-icon"></div>
+                </button>
+                <button data-size="2" class="btn brush-size-btn" title="2×2">
+                  <div class="brush-size-icon"></div>
+                </button>
+                <button data-size="3" class="btn brush-size-btn" title="3×3">
+                  <div class="brush-size-icon"></div>
+                </button>
+                <button data-size="4" class="btn brush-size-btn" title="4×4">
+                  <div class="brush-size-icon"></div>
+                </button>
+              </div>
+          </div>
+          <div class="row">
             <!-- Stift (Pinsel) -->
             <button id="brushBtn" class="btn-icon active" title="Stift">
               <span class="mdi mdi-pencil icon" aria-hidden="true"></span>
@@ -594,6 +621,10 @@
             <!-- Radiergummi -->
             <button id="eraserBtn" class="btn-icon" title="Radierer">
               <span class="mdi mdi-eraser icon" aria-hidden="true"></span>
+            </button>
+            <!-- Pipette -->
+            <button id="pipetteBtn" class="btn-icon" title="Pipette">
+              <span class="mdi mdi-eyedropper-variant icon" aria-hidden="true"></span>
             </button>
             <!-- Muster verschieben -->
             <button id="moveBtn" class="btn-icon" title="Muster verschieben">
@@ -618,21 +649,6 @@
               <span class="mdi mdi-flip-vertical icon" aria-hidden="true"></span>
             </button>
           </div>
-          <div class="row">
-            <label>Stiftgröße</label>
-            <button data-size="1" class="btn brush-size-btn active" title="1×1">
-              <div class="brush-size-icon"></div>
-            </button>
-            <button data-size="2" class="btn brush-size-btn" title="2×2">
-              <div class="brush-size-icon"></div>
-            </button>
-            <button data-size="3" class="btn brush-size-btn" title="3×3">
-              <div class="brush-size-icon"></div>
-            </button>
-            <button data-size="4" class="btn brush-size-btn" title="4×4">
-              <div class="brush-size-icon"></div>
-            </button>
-          </div>
         </div>
 
         <!-- Bild -->
@@ -645,27 +661,62 @@
             <button id="loadBtn" class="btn" title="Projekt laden (JSON)">
               Laden
             </button>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">Hintergrund</div>
+          <div class="row">
+            <button id="backgroundBtn" class="btn" title="Hintergrundbild laden">
+              Hintergrund
+            </button>
+            <button
+              id="clearBackgroundBtn"
+              class="btn btn-ghost"
+              title="Hintergrundbild entfernen"
+            >
+            <span class="mdi mdi-image-off-outline icon" aria-hidden="true"></span>
+            </button>
             <!-- Raster leeren -->
             <button id="clearBtn" class="btn btn-ghost" title="Aktuellen Frame vollständig leeren">
               <span class="mdi mdi-trash-can-outline icon" aria-hidden="true"></span>
             </button>
             <input id="loadInput" type="file" accept="application/json" style="display:none" />
+            <input
+              id="backgroundInput"
+              type="file"
+              accept="image/png,image/jpeg"
+              style="display:none"
+            />
           </div>
         </div>
 
         <!-- GIF Vorschau -->
         <div class="section">
-          <div class="section-title">GIF &amp; Vorschau</div>
+          <div class="section-title">Vorschau</div>
           <div class="preview-card">
             <div class="preview-controls">
               <label for="gifFpsInput">FPS</label>
-              <input id="gifFpsInput" type="range" min="1" max="24" value="5" />
+              <input id="gifFpsInput" type="range" min="1" max="25" value="5" />
               <span id="gifFpsValue" class="pill">5 FPS</span>
             </div>
-            <canvas id="gifPreviewCanvas" width="200" height="200"></canvas>
+            <canvas id="gifPreviewCanvas" width="150" height="150"></canvas>
             <div class="preview-controls">
-              <button id="togglePreviewBtn" class="btn">Vorschau abspielen</button>
-              <button id="restartPreviewBtn" class="btn btn-ghost">Neu starten</button>
+              <button 
+                id="togglePreviewBtn"
+                class="btn"
+                title="Vorschau abspielen"
+                aria-label="Vorschau abspielen"
+                >
+                <span class="mdi mdi-play icon" aria-hidden="true"></span>
+              </button>
+              <button
+                id="restartPreviewBtn"
+                class="btn btn-ghost"
+                title="Neu starten"
+                aria-label="Neu starten"
+              >
+                <span class="mdi mdi-restart icon" aria-hidden="true"></span>
+              </button>
             </div>
           </div>
         </div>
