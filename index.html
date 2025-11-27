@@ -18,6 +18,9 @@
       --accent-soft: rgba(56, 189, 248, 0.15);
       --border: #1f2937;
       --frame-thumb: clamp(70px, 8vw, 86px);
+      --frames-width: clamp(180px, 16vw, 230px);
+      --tools-width: clamp(230px, 24vw, 340px);
+      --canvas-vh-limit: calc(100vh - 220px);
     }
     * { box-sizing: border-box; }
 
@@ -31,7 +34,7 @@
     }
 
     .app {
-      max-width: 1200px;
+      max-width: 100%;
       width: 100%;
       background: #020617;
       border-radius: 0.75rem;
@@ -85,18 +88,15 @@
     main {
       flex: 1;
       display: grid;
-      grid-template-columns: minmax(190px, 0.9fr) minmax(0, 1.3fr) minmax(240px, 0.9fr);
+      grid-template-columns: var(--frames-width) minmax(0, 1fr) var(--tools-width);
       min-height: 440px;
       gap: 0.8rem;
-      max-height: calc(100vh - 180px);
+      align-items: stretch;
     }
 
     @media (max-width: 1200px) {
       .app { max-width: 100%; }
-      main {
-        grid-template-columns: minmax(170px, 0.9fr) minmax(0, 1.2fr) minmax(220px, 0.95fr);
-        max-height: none;
-      }
+      main { grid-template-columns: clamp(170px, 18vw, 210px) minmax(0, 1fr) clamp(210px, 22vw, 300px); }
     }
 
     @media (max-width: 900px) {
@@ -204,8 +204,8 @@
       display: flex;
       flex-direction: column;
       gap: 0.6rem;
-      width: calc(var(--frame-thumb) + 1.8rem);
-      min-width: calc(var(--frame-thumb) + 1.8rem);
+      width: var(--frames-width);
+      min-width: var(--frames-width);
     }
 
     .frames-header-title {
@@ -387,6 +387,7 @@
       justify-content: center;
       padding: 0.6rem;
       overflow: auto;
+      min-height: 0;
     }
 
     .canvas-container {
@@ -396,11 +397,14 @@
       box-shadow:
         0 0 0 1px rgba(15, 23, 42, 0.9),
         0 16px 36px rgba(0, 0, 0, 0.9);
+      max-width: min(100%, var(--canvas-vh-limit));
+      max-height: var(--canvas-vh-limit);
+      display: flex;
     }
 
     canvas {
       display: block;
-      max-width: 100%;
+      width: min(100%, var(--canvas-vh-limit));
       height: auto;
       image-rendering: pixelated;
       background-color: #0b0f19;
@@ -427,6 +431,8 @@
       display: flex;
       flex-direction: column;
       gap: 0.6rem;
+      width: var(--tools-width);
+      min-width: var(--tools-width);
     }
 
     .section-title {
@@ -462,7 +468,7 @@
 
     #gifPreviewCanvas {
       width: 100%;
-      max-width: 200px;
+      max-width: clamp(170px, 30vw, 240px);
       aspect-ratio: 1 / 1;
       border-radius: 0;
       background: #0b1221;
