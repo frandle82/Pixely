@@ -17,7 +17,7 @@
       --accent: #38bdf8;
       --accent-soft: rgba(56, 189, 248, 0.15);
       --border: #1f2937;
-      --frame-thumb: 86px;
+      --frame-thumb: clamp(70px, 8vw, 86px);
     }
     * { box-sizing: border-box; }
 
@@ -27,7 +27,7 @@
       display: flex;
       align-items: stretch;
       justify-content: center;
-      padding: 1rem;
+      padding: clamp(0.5rem, 1vw + 0.5rem, 1.5rem);
     }
 
     .app {
@@ -49,6 +49,7 @@
       align-items: center;
       justify-content: space-between;
       gap: 0.75rem;
+      flex-wrap: wrap;
     }
 
     header h1 {
@@ -84,9 +85,18 @@
     main {
       flex: 1;
       display: grid;
-      grid-template-columns: auto minmax(0, 1fr) 260px;
+      grid-template-columns: minmax(190px, 0.9fr) minmax(0, 1.3fr) minmax(240px, 0.9fr);
       min-height: 440px;
-      max-height: 80vh;
+      gap: 0.8rem;
+      max-height: calc(100vh - 180px);
+    }
+
+    @media (max-width: 1200px) {
+      .app { max-width: 100%; }
+      main {
+        grid-template-columns: minmax(170px, 0.9fr) minmax(0, 1.2fr) minmax(220px, 0.95fr);
+        max-height: none;
+      }
     }
 
     @media (max-width: 900px) {
@@ -100,6 +110,29 @@
       .frames-panel { grid-area: frames; }
       .canvas-area { grid-area: canvas; }
       .tools-panel { grid-area: tools; border-left: none; border-top: 1px solid var(--border); }
+    }
+
+    @media (max-width: 720px) {
+      main {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto;
+        grid-template-areas:
+          "frames"
+          "canvas"
+          "tools";
+        max-height: none;
+      }
+      .frames-panel,
+      .tools-panel {
+        width: 100%;
+        min-width: 0;
+      }
+      .tools-panel {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 0.9rem;
+      }
+      .canvas-shell { min-height: 320px; }
     }
 
     .btn {
@@ -119,6 +152,7 @@
       transition: background 0.12s ease, border-color 0.12s ease, transform 0.06s ease;
     }
     .btn:hover { background: #030712; transform: translateY(-0.5px); }
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
     .btn-primary {
       border-color: var(--accent);
       background: radial-gradient(circle at top left, #0ea5e9, #0369a1);
@@ -532,6 +566,15 @@
           Pixely
       </h1>
       <div class="header-actions">
+        <button id="undoBtn" class="btn btn-ghost" title="Rückgängig (Ctrl+Z)" aria-label="Rückgängig">
+          <span class="mdi mdi-undo icon" aria-hidden="true"></span>
+        </button>
+        <button id="redoBtn" class="btn btn-ghost" title="Wiederholen (Ctrl+Y)" aria-label="Wiederholen">
+          <span class="mdi mdi-redo icon" aria-hidden="true"></span>
+        </button>
+        <button id="fullscreenBtn" class="btn btn-ghost" title="Vollbild umschalten" aria-label="Vollbild">
+          <span class="mdi mdi-fullscreen icon" aria-hidden="true"></span>
+        </button>
         <button id="exportPngBtn" class="btn btn-primary" title="Aktuellen Frame als PNG exportieren">
           PNG
         </button>
