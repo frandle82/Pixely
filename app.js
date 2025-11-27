@@ -1,4 +1,5 @@
 (function () {
+  const appShell = document.querySelector(".app");
   const canvas = document.getElementById("pixelCanvas");
   const ctx = canvas.getContext("2d");
 
@@ -37,6 +38,9 @@
   const gifFpsValue = document.getElementById("gifFpsValue");
   const togglePreviewBtn = document.getElementById("togglePreviewBtn");
   const restartPreviewBtn = document.getElementById("restartPreviewBtn");
+  const undoBtn = document.getElementById("undoBtn");
+  const redoBtn = document.getElementById("redoBtn");
+  const fullscreenBtn = document.getElementById("fullscreenBtn");
 
   const brushSizeButtons = Array.from(document.querySelectorAll(".brush-size-btn"));
 
@@ -75,6 +79,11 @@
   let moveOriginalGrid = null;
   let moveOffset = { x: 0, y: 0 };
 
+  const MAX_HISTORY = 50;
+  let undoStack = [];
+  let redoStack = [];
+  let hasPendingHistory = false;
+
   let previewTimer = null;
   let previewIndex = 0;
   let previewPlaying = false;
@@ -95,6 +104,109 @@
 
   function setStatus(msg) {
     statusText.textContent = msg;
+  }
+
+  function cloneFrame(frame) {
+    return frame.map(row => row.slice());
+  }
+
+  function captureSnapshot() {
+    return {
+      frames: frames.map(cloneFrame),
+      currentFrameIndex,
+      gridWidth,
+      gridHeight,
+    };
+  }
+
+  function restoreSnapshot(snapshot) {
+    if (!snapshot) return;
+    gridWidth = snapshot.gridWidth;
+    gridHeight = snapshot.gridHeight;
+    cellWidth = CANVAS_SIZE / gridWidth;
+    cellHeight = CANVAS_SIZE / gridHeight;
+    frames = snapshot.frames.map(cloneFrame);
+    currentFrameIndex = Math.min(snapshot.currentFrameIndex, frames.length - 1);
+
+    customWidthInput.value = gridWidth;
+    customHeightInput.value = gridHeight;
+    const presetVal = `${gridWidth}x${gridHeight}`;
+    if ([...presetSize.options].some(o => o.value === presetVal)) {
+      presetSize.value = presetVal;
+    }
+
+    renderFramesList();
+    redrawCanvas();
+    updateInfo();
+  }
+
+  function updateHistoryButtons() {
+    if (undoBtn) undoBtn.disabled = undoStack.length === 0;
+    if (redoBtn) redoBtn.disabled = redoStack.length === 0;
+  }
+
+  function pushHistory() {
+    undoStack.push(captureSnapshot());
+    if (undoStack.length > MAX_HISTORY) {
+      undoStack.shift();
+    }
+    redoStack = [];
+    updateHistoryButtons();
+  }
+
+  function beginHistoryEntry() {
+    if (hasPendingHistory) return;
+    pushHistory();
+    hasPendingHistory = true;
+  }
+
+  function finalizeHistoryEntry() {
+    hasPendingHistory = false;
+  }
+
+  function undo() {
+    if (!undoStack.length) return;
+    const current = captureSnapshot();
+    const previous = undoStack.pop();
+    redoStack.push(current);
+    restoreSnapshot(previous);
+    hasPendingHistory = false;
+    updateHistoryButtons();
+    setStatus("Aktion rückgängig gemacht.");
+  }
+
+  function redo() {
+    if (!redoStack.length) return;
+    const current = captureSnapshot();
+    const next = redoStack.pop();
+    undoStack.push(current);
+    restoreSnapshot(next);
+    hasPendingHistory = false;
+    updateHistoryButtons();
+    setStatus("Aktion wiederholt.");
+  }
+
+  function updateFullscreenButton() {
+    if (!fullscreenBtn) return;
+    const active = Boolean(document.fullscreenElement);
+    const icon = active ? "mdi-fullscreen-exit" : "mdi-fullscreen";
+    const label = active ? "Vollbild verlassen" : "Vollbild umschalten";
+    fullscreenBtn.innerHTML = `<span class="mdi ${icon} icon" aria-hidden="true"></span>`;
+    fullscreenBtn.setAttribute("title", label);
+    fullscreenBtn.setAttribute("aria-label", label);
+  }
+
+  function toggleFullscreen() {
+    const target = appShell || document.documentElement;
+    if (!document.fullscreenElement) {
+      if (target && target.requestFullscreen) {
+        target.requestFullscreen();
+        setStatus("Vollbild aktiviert.");
+      }
+    } else if (document.exitFullscreen) {
+      document.exitFullscreen();
+      setStatus("Vollbild beendet.");
+    }
   }
 
   function flashFrameActions(index) {
@@ -367,9 +479,12 @@
   function initFrames() {
     frames = [createEmptyGrid(gridWidth, gridHeight)];
     currentFrameIndex = 0;
+    undoStack = [];
+    redoStack = [];
     renderFramesList();
     redrawCanvas();
     updateInfo();
+    updateHistoryButtons();
   }
 
   function getCurrentGrid() {
@@ -497,6 +612,7 @@
 
   function moveFrame(oldIndex, newIndex) {
     if (newIndex < 0 || newIndex >= frames.length) return;
+    pushHistory();
     const [frame] = frames.splice(oldIndex, 1);
     frames.splice(newIndex, 0, frame);
     currentFrameIndex = newIndex;
@@ -507,6 +623,7 @@
   }
 
   function duplicateFrame(index) {
+    pushHistory();
     const base = frames[index];
     const clone = base.map(row => row.slice());
     frames.splice(index + 1, 0, clone);
@@ -523,6 +640,7 @@
       clearCurrentFrame();
       return;
     }
+    pushHistory();
     frames.splice(index, 1);
     if (currentFrameIndex >= frames.length) {
       currentFrameIndex = frames.length - 1;
@@ -699,6 +817,7 @@
   }
 
   function resizeAllFrames(newWidth, newHeight) {
+    pushHistory();
     newWidth = Math.max(MIN_SIZE, Math.min(MAX_SIZE, newWidth));
     newHeight = Math.max(MIN_SIZE, Math.min(MAX_SIZE, newHeight));
     gridWidth = newWidth;
@@ -759,6 +878,7 @@
   }
 
   function clearCurrentFrame() {
+    pushHistory();
     frames[currentFrameIndex] = createEmptyGrid(gridWidth, gridHeight);
     redrawCanvas();
     renderFramesList();
@@ -809,6 +929,10 @@
         renderFramesList();
         redrawCanvas();
         updateInfo();
+        undoStack = [];
+        redoStack = [];
+        hasPendingHistory = false;
+        updateHistoryButtons();
         setStatus("Projekt geladen.");
       } catch (err) {
         console.error(err);
@@ -1083,15 +1207,19 @@
         setStatus("Keine Farbe an dieser Position gefunden.");
       }
     } else if (currentTool === "pinsel" || currentTool === "radierer") {
+      beginHistoryEntry();
       isDrawing = true;
       paintBrush(cell);
     } else if (currentTool === "rechteck" || currentTool === "kreis") {
+      beginHistoryEntry();
       isShapeDrawing = true;
       shapeStart = cell;
       shapeCurrent = cell;
       previewShape(shapeStart, shapeCurrent);
     } else if (currentTool === "fuellen") {
+      beginHistoryEntry();
       floodFill(cell);
+      finalizeHistoryEntry();
       setStatus("Fläche gefüllt.");
     }
   }
@@ -1120,9 +1248,11 @@
       const dy = moveOffset.y;
       if (moveOriginalGrid) {
         if (dx !== 0 || dy !== 0) {
+          beginHistoryEntry();
           frames[currentFrameIndex] = shiftGridData(moveOriginalGrid, dx, dy);
           renderFramesList();
           redrawCanvas();
+          finalizeHistoryEntry();
           setStatus(`Muster um ${dx}, ${dy} Felder verschoben.`);
         } else {
           redrawCanvas();
@@ -1137,9 +1267,11 @@
 
     if (isDrawing) {
       isDrawing = false;
+      finalizeHistoryEntry();
       return;
     }
     if (isShapeDrawing) {
+      pushHistory();
       isShapeDrawing = false;
       if (shapeStart && shapeCurrent) {
         applyShape(shapeStart, shapeCurrent);
@@ -1148,6 +1280,7 @@
       }
       shapeStart = null;
       shapeCurrent = null;
+      finalizeHistoryEntry();
     }
   }
 
@@ -1261,6 +1394,10 @@
 
   newFrameBtn.addEventListener("click", addEmptyFrameAfterCurrent);
 
+  undoBtn.addEventListener("click", undo);
+  redoBtn.addEventListener("click", redo);
+  fullscreenBtn.addEventListener("click", toggleFullscreen);
+
   brushBtn.addEventListener("click", () => setTool("pinsel"));
   eraserBtn.addEventListener("click", () => setTool("radierer"));
   moveBtn.addEventListener("click", () => setTool("verschieben"));
@@ -1344,6 +1481,25 @@
     e.preventDefault();
     handlePointerUp();
   }, { passive: false });
+
+  document.addEventListener("keydown", e => {
+    const tag = e.target && e.target.tagName;
+    if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
+    const key = e.key.toLowerCase();
+    const withModifier = e.metaKey || e.ctrlKey;
+    if (withModifier && key === "z") {
+      e.preventDefault();
+      if (e.shiftKey) {
+        redo();
+      } else {
+        undo();
+      }
+    } else if (withModifier && key === "y") {
+      e.preventDefault();
+      redo();
+    }
+  });
+  document.addEventListener("fullscreenchange", updateFullscreenButton);
 
   // Start
   initFrames();
